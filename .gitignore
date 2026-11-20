@@ -1,0 +1,83 @@
+# Dependencies
+/node_modules/
+
+# Build output and framework caches (React/Vite/Next and common tooling)
+/dist/
+/build/
+/coverage/
+/.next/
+/.nuxt/
+/.output/
+/.svelte-kit/
+/.astro/
+/.vite/
+/.turbo/
+/.vercel/
+/.netlify/
+/out/
+*.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.template
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Siftory private local content, database files, and manual backup exports
+/.siftory/
+/local-data/
+/user-data/
+/backups/
+/imports/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sqlite-journal
+*.siftory-backup
+*.siftory-backup.*
+
+# Test and browser automation artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/
+/cypress/videos/
+/cypress/screenshots/
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.cache/
+.temp/
+.tmp/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor/workspace local state
+.idea/
+*.code-workspace
+
+.agents/
+!.agents/
+/.agents/*
+!.agents/skills/
+/.agents/skills/*
+!.agents/skills/siftory-project-context/
+/.agents/skills/siftory-project-context/*
+!.agents/skills/siftory-project-context/SKILL.md
