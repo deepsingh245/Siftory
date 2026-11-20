@@ -32,7 +32,7 @@ Tasks:
 
 Exit criteria:
 - Main shell is coherent on desktop and mobile.
-- Theme switching works and persists appropriately.
+- Theme switching works; preference persistence is deferred until settings/storage behavior is decided.
 - Components use shared tokens.
 - No feature is represented as functional when it is not.
 

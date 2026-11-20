@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This document describes the target architecture. The initial Vite + React + TypeScript scaffold has been audited; its actual baseline is recorded in `docs/PROJECT_SETUP.md`. Preserve that starter and inspect its live conventions before selecting additional libraries or replacing infrastructure.
+This document describes the target architecture. The Vite + React + TypeScript baseline and Phase 1 shell are recorded in `docs/PROJECT_SETUP.md`. Preserve the starter conventions and inspect live code before selecting additional libraries or replacing infrastructure. The current UI has no domain state, persistence, router, or feature workflows.
 
 ## Principles
 

@@ -1,5 +1,5 @@
 # Application source
 
-The repository now has a Vite + React + TypeScript starter. `App.tsx` and its styles are the generated Vite demo and will be replaced during the product/design foundation phase; they are not Siftory features.
+`App.tsx` is the Phase 1 Siftory shell: responsive navigation, theme switching, search entry-point placeholder, and the library's honest first-use state. Library data, import, search, processing, and research workflows are not implemented yet.
 
-The surrounding folders are architectural boundaries from `docs/ARCHITECTURE.md`. They are still empty and do not imply that persistence, import, processing, or research features are implemented.
+The surrounding folders are architectural boundaries from `docs/ARCHITECTURE.md`. They remain planned boundaries and do not imply that persistence or feature behavior exists.

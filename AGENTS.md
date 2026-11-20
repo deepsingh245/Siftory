@@ -12,7 +12,7 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md` for product intent. Read the r
 
 ## Current repository status
 
-This repository now contains a Vite + React + TypeScript starter. Its current screen is generated Vite demo content; no Siftory product features, routing, persistence, or test suite have been implemented. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
+This repository contains a Vite + React + TypeScript app with the initial Siftory shell and visual foundation. Library data, routing, persistence, imports, and research features are not implemented. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
 
 ## Product and privacy constraints
 
@@ -52,4 +52,4 @@ This repository now contains a Vite + React + TypeScript starter. Its current sc
 
 ## Implementation boundary
 
-The Vite starter is runnable, but it is not the Siftory product. Do not claim product features exist until implemented. Use `docs/PLAN.md` for phase order and create a focused phase plan before substantial feature work. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the product brief.
+The Siftory shell is runnable, but most product workflows are not implemented. Do not claim product features exist until implemented. Use `docs/PLAN.md` for phase order and create a focused phase plan before substantial feature work. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the product brief.

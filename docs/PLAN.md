@@ -49,7 +49,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** The app-specific audit is documented; the app can be built or known failures are recorded; no infrastructure replacement is proposed without evidence.
 
-**Current status:** Complete. The repository has a Vite + React + TypeScript starter, npm lockfile, and documented audit in `docs/PROJECT_SETUP.md`. `npm run build` and `npm run lint` pass. The visible Vite demo is temporary; no Siftory product features, test runner, router, persistence, or backend are present.
+**Current status:** Complete. The repository has a Vite + React + TypeScript starter, npm lockfile, and documented audit in `docs/PROJECT_SETUP.md`. `npm run build` and `npm run lint` passed during the audit. No test runner, router, persistence, or backend is configured.
 
 ### Phase 1 — Product and design foundation
 
@@ -58,6 +58,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 **Work:** Adapt or create semantic design tokens, dark and light themes, responsive application shell, navigation, global search entry point, and shared interface primitives. Apply the Quiet Editorial Research Desk direction and the accessibility requirements.
 
 **Gate:** The shell works at desktop and mobile sizes in both themes; focus and keyboard behavior are clear; shared components use the design tokens; visible controls have real behavior or are clearly marked as unavailable.
+
+**Current status:** Implementation complete; review gate pending. The responsive shell, theme switch, planned navigation states, and honest library empty state are implemented. Build and lint pass. Manual desktop/mobile browser review remains outstanding because no browser surface was available in the implementation environment.
 
 ### Phase 2 — Library foundation
 
@@ -123,4 +125,4 @@ Review and agree on that focused plan before substantial implementation. Complet
 
 ## First milestone
 
-Write and review the focused Phase 1 plan under `docs/phases/` before beginning product shell and design foundation implementation.
+Complete the Phase 1 manual viewport review. Then write and review a focused Phase 2 plan before implementing library behavior.

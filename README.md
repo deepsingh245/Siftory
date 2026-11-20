@@ -4,11 +4,11 @@
 
 Your personal library for everything worth knowing.
 
-Siftory is a planned local-first personal knowledge library and research workspace. This repository now includes the frontend starter; Siftory product features have not been implemented.
+Siftory is a local-first personal knowledge library and research workspace. The initial responsive application shell and theme foundation are in place; library and research workflows are still planned.
 
 ## Development
 
-The visible screen is the generated Vite demo and will be replaced during the product/design foundation phase.
+The current app is the Phase 1 shell. Navigation destinations marked “Planned” and library search are not implemented features yet.
 
 ```sh
 npm install
