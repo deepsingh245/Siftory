@@ -1,3 +1,5 @@
-# Application source scaffold
+# Application source
 
-The folders below are empty architectural boundaries from `docs/ARCHITECTURE.md`. No application has been implemented and no framework or dependencies are installed. Once a React + TypeScript starter is present, inspect and adapt this structure to its existing conventions before adding features.
+The repository now has a Vite + React + TypeScript starter. `App.tsx` and its styles are the generated Vite demo and will be replaced during the product/design foundation phase; they are not Siftory features.
+
+The surrounding folders are architectural boundaries from `docs/ARCHITECTURE.md`. They are still empty and do not imply that persistence, import, processing, or research features are implemented.

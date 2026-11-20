@@ -10,6 +10,8 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 | Tagline is “Save less. Understand more.” | Confirmed | Communicates the product promise |
 | Local-first application | Confirmed | User ownership and low operating cost |
 | React + TypeScript direction | Confirmed | Existing starter and intended workflow |
+| Vite + React + TypeScript as the initial app scaffold | Confirmed | A client-side starter fits the local-first browser product and was created during Phase 0 |
+| npm as the package manager | Confirmed | Selected for the initial scaffold; `package-lock.json` is the dependency lockfile |
 | Web application | Confirmed | Primary product surface |
 | Manual backup/restore | Confirmed | No automatic cross-device sync |
 | No mandatory cloud backend | Confirmed | Keep cost and operational complexity low |

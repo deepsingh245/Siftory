@@ -12,12 +12,12 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md` for product intent. Read the r
 
 ## Current repository status
 
-This repository currently contains planning and AI guidance only. No React application, package manifest, source code, routing, persistence, or test setup has been provided. Do not describe target architecture as existing implementation. When application code arrives, inspect it before choosing libraries or imposing folders.
+This repository now contains a Vite + React + TypeScript starter. Its current screen is generated Vite demo content; no Siftory product features, routing, persistence, or test suite have been implemented. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
 
 ## Product and privacy constraints
 
 - Build local-first; manual export and restore are required. No automatic cloud sync in the initial product.
-- React and TypeScript are the intended direction, pending audit of any supplied starter.
+- Vite, React, and TypeScript are the audited initial app foundation. Preserve their conventions and avoid adding libraries until a phase plan calls for them.
 - Core library use must not depend on AI credentials.
 - Codex is the development agent, not Siftory's runtime model. ChatGPT sign-in does not provide an app API.
 - Never access or reuse undocumented Codex credentials or private endpoints. Never put secret keys in browser bundles.
@@ -50,6 +50,6 @@ This repository currently contains planning and AI guidance only. No React appli
 12. Run only verification commands that exist and are appropriate; report what was and was not verified.
 13. Review changed files for accidental edits, secrets, accessibility, and data integrity.
 
-## Initial setup boundary
+## Implementation boundary
 
-Until an application starter is supplied, focus on documentation, product/design decisions, and project-level AI guidance. Do not generate application features or claim a runnable app exists. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the phased product brief when the user asks to begin implementation.
+The Vite starter is runnable, but it is not the Siftory product. Do not claim product features exist until implemented. Use `docs/PLAN.md` for phase order and create a focused phase plan before substantial feature work. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the product brief.

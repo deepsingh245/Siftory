@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This is the target architecture direction. The existing starter must be audited before selecting exact libraries, folder structure or replacing infrastructure. Record actual findings after the audit.
+This document describes the target architecture. The initial Vite + React + TypeScript scaffold has been audited; its actual baseline is recorded in `docs/PROJECT_SETUP.md`. Preserve that starter and inspect its live conventions before selecting additional libraries or replacing infrastructure.
 
 ## Principles
 
