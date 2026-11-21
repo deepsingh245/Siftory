@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
+import type { Analysis } from '../../domain/analysis'
 import type { ExtractedContent, ProcessingCapability, ProcessingJob } from '../../domain/processing'
 import { getProcessingCapability } from '../../domain/processing'
 import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
@@ -23,8 +24,11 @@ export type LibraryData = {
   getSourceFile: (savedItemId: string) => Promise<SourceFileRecord | undefined>
   getProcessingCapability: (item: SavedItem) => Promise<ProcessingCapability>
   getExtractedContent: (id: string) => Promise<ExtractedContent | undefined>
+  getAnalyses: (id: string) => Promise<Analysis[]>
   actions: {
     saveItem: (item: SavedItem) => Promise<void>
+    saveAnalysis: (analysis: Analysis) => Promise<void>
+    applySuggestedCategory: (id: string, name: string) => Promise<void>
     saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => Promise<void>
     queueProcessing: (savedItemId: string) => Promise<ProcessingJob>
     processNow: (savedItemId: string) => Promise<ProcessingJob | undefined>
@@ -115,6 +119,7 @@ export function useLibraryData(): LibraryData {
   const findDuplicate = useCallback((canonicalUrl: string) => repository.findByCanonicalUrl(canonicalUrl), [])
   const getSourceFile = useCallback((savedItemId: string) => repository.getSourceFile(savedItemId), [])
   const getExtractedContent = useCallback((id: string) => repository.getExtractedContent(id), [])
+  const getAnalyses = useCallback((id: string) => repository.getAnalyses(id), [])
   const getCapability = useCallback(async (item: SavedItem) => {
     if (item.sourceType !== 'text' || item.contentType !== 'text' || !item.sourceFileId) {
       return getProcessingCapability(item, undefined, [])
@@ -131,6 +136,8 @@ export function useLibraryData(): LibraryData {
   }, [])
   const actions = useMemo(() => ({
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
+    saveAnalysis: (analysis: Analysis) => repository.saveAnalysis(analysis),
+    applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),
     saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => perform(() => repository.saveImportedBatch(items, files)),
     queueProcessing: (savedItemId: string) => perform(() => queueProcessingItem(repository, savedItemId)),
     processNow: async (savedItemId: string) => {
@@ -158,5 +165,5 @@ export function useLibraryData(): LibraryData {
     deleteTag: (id: string) => perform(() => repository.deleteTag(id)),
   }), [perform, refresh])
 
-  return { items, collections, categories, tags, jobs, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getProcessingCapability: getCapability, actions }
+  return { items, collections, categories, tags, jobs, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, getProcessingCapability: getCapability, actions }
 }

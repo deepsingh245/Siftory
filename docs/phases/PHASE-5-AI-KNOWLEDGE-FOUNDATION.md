@@ -6,16 +6,14 @@ Deliver Siftory's central promise: let the user explicitly connect a ChatGPT acc
 
 ## Audit and starting baseline
 
-The Phase 0–4 code foundation exists, but the earlier phase gates are not all closed:
+The Phase 0 audit is recorded. The Phase 5 kickoff verified the core Phase 1–4 flows in fresh Chrome profiles at 1280 px and 390 px with synthetic records:
 
-- Phase 0 audit is recorded.
-- Phases 1 and 2 are implemented; manual responsive and keyboard reviews remain open.
-- Phase 3 import UI/repository are implemented; parser/migration tests and manual review remain open. Current limits are 10 MiB per JSON/bookmark file, 1,000 preview rows, and 100 selected rows per write transaction.
-- Phase 4 has persistent jobs, explicit queue controls, local strict UTF-8 `.txt` extraction, and capability reporting. `npm run build`, `npm run lint`, and `npm run test` passed in the current audit; 23 automated tests passed. Browser, responsive, and keyboard review remains open.
-- There is no runtime AI connection, generated analysis model, automatic categorization, or transcript pipeline in Siftory today.
-- The untracked repository `data.json` is user data; it is not a test fixture and must remain untouched and uncommitted unless the user directs otherwise.
+- **Phase 1:** keyboard focus and navigation, dark and light theme switching, and layout width. Search now opens the library after entering a query, so tabbing through the input keeps the current screen open.
+- **Phase 2:** manual records, moving them to All Saved, applying a category, keyword search, and persistence across reload.
+- **Phase 3:** Instagram preview and duplicate handling, a malformed row, bookmark folder provenance and unsafe-link rejection, manual URL import, and PDF/text import. New automated fixtures cover parser behavior, v1 schema upgrade, retention of original files, and rollback on a failed batch write. Current limits are 10 MiB per JSON/bookmark file, 1,000 preview rows, and 100 selected rows per transaction.
+- **Phase 4:** queue persistence after reload, skip and requeue, text extraction and viewing the result, and downloading an original PDF. Tests also cover invalid UTF-8 and recovery from expired leases.
 
-Close the Phase 3 parser/migration tests and outstanding Phase 1–4 manual checks before Phase 5 implementation begins. The current build/test pass does not close those review gates.
+The browser review used desktop Chrome at both widths and included a visual inspection of import previews in desktop dark and mobile light layouts. Screen reader testing, physical mobile testing, and a full accessibility review remain release work. This baseline preceded the in-app AI analysis flow documented below.
 
 ## Product and technical references
 
@@ -59,8 +57,8 @@ Close the Phase 3 parser/migration tests and outstanding Phase 1–4 manual chec
 
 ## Implementation sequence
 
-1. Close Phase 3 parser/migration tests and document the Phase 1–4 desktop, mobile, and keyboard reviews. Preserve any review findings as concrete fixes before Phase 5 work.
-2. Audit current official Sign in with ChatGPT plan-use documentation and complete the local/open-source eligibility and API feasibility spike. Compare with ApplyDock's documented local CLI helper without copying credentials or assuming its method is the preferred product path.
+1. Run the Phase 3 parser/migration tests and review the Phase 1–4 flows at desktop and mobile widths with keyboard checks. The kickoff results are recorded above.
+2. Confirm eligibility and a live synthetic response using the official Sign in with ChatGPT check below. Validate the documented account renewal and disconnection paths before building persistent account sessions.
 3. Record the selected integration and threat/data-flow model in `docs/DECISIONS.md` before implementing auth or persistence.
 4. Implement the smallest secure connection flow and one consented, text-only Responses request. Use only supported public endpoints and request settings; handle authorization denial, token expiry/revocation, plan-use denial, usage limits, and unsupported models/capabilities without silent billing fallback.
 5. Define the analysis domain/storage migration and idempotency key. Preserve originals and user edits; make outputs traceable to exact source text and analyzer versions.
@@ -91,4 +89,17 @@ Close the Phase 3 parser/migration tests and outstanding Phase 1–4 manual chec
 
 ## Current status
 
-Plan added as the next product priority after the Phase 1–4 gates are closed. No AI provider, OAuth, AI analysis, or YouTube transcript path has been implemented in Siftory.
+The account holder verified the terminal check live. `gpt-6-sol` returned a completed response and the temporary session was revoked. Earlier runs had returned HTTP 200 without a usable content type. The shared client reads a bounded response and recognizes valid streamed completion events even when the header is missing. `npm run ai:check` remains available as a diagnostic.
+
+### First in-app flow
+
+1. Open the same Siftory address you use for your library with `npm run dev` or `npm run preview`. IndexedDB is scoped to the exact browser address and port.
+2. Open **Settings**, choose **Connect ChatGPT**, and use **Continue with ChatGPT** to sign in and grant plan access. Return to Siftory to see the connection and available models.
+3. Open a saved Instagram item with a caption, or extract an imported `.txt` file in **Processing** first. Open **AI analysis**, review the exact text, choose a model, and confirm before selecting **Analyze with ChatGPT**.
+4. The analysis shows the summary, key points, mentioned links and entities, suggested categories, and matching source quotes. Edit a category name before applying it. Analyze only text you're comfortable sending to OpenAI. Each request may use plan allowance or enabled credits.
+
+The connection lives in local server memory until expiration, disconnect, or server restart. Settings runs a fresh authorization when reconnecting. Analysis uses at most 16,000 characters per request. Results save in local IndexedDB and are reused for the same item, analyzed text, model, and analysis version. Deleting the item removes its results.
+
+The in-app sign-in reached the model listing but hit the smaller limit for text responses. The model catalog now has its own 8 MiB limit. A regression test verifies that a catalog above the text response limit loads and only selectable models reach Settings.
+
+On 2026-11-22, the account holder reported that the in-app flow works after the model list size fix. Build, lint, and 49 automated tests passed on that implementation. Automated and Chrome tests use simulated provider results and synthetic source text. Persistent account registrations and credential renewal, durable analysis jobs and batch actions, large-export handling, and expanded media inputs remain open.

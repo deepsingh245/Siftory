@@ -2,7 +2,7 @@
 
 ## Current state
 
-Audited on 2026-11-20; updated for Phase 4 on 2026-11-21. The repository has a runnable Vite + React + TypeScript application using npm. Phases 2–4 provide a local library, organization, search, recent history, review-before-save imports, and a persistent processing queue that extracts local `.txt` files. PDF extraction, arbitrary URL fetching, AI account connection/analysis, backup/restore, and research workflows are not implemented. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20 and updated for Phase 5 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, imports, a local text extraction queue, and individual AI analysis for saved Instagram captions and extracted text through an optional ChatGPT connection. The starter pack supplied product and implementation guidance but no application source.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -17,7 +17,7 @@ The repository was initialized with Git before this task. No remote push or comm
 - Product code is organized under `src/app`, `src/domain`, `src/features/library`, and `src/infrastructure/persistence`.
 - `tests/unit` and `tests/integration` cover domain rules and the IndexedDB repository. The test runner is Vitest.
 - `src/domain/imports.ts` parses and validates import candidates locally; `src/features/import/` provides preview, duplicate review, and explicit confirmation.
-- IndexedDB schema version 3 stores original PDF/text files, persistent processing jobs, and separately attributed extracted text.
+- IndexedDB schema version 4 stores the local library, source files, processing jobs, extracted text, and versioned AI results.
 
 ## Phase 0 audit results
 
@@ -43,7 +43,7 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 - Added dark-first and light themes, a working appearance toggle, keyboard focus styling, reduced-motion handling, and Siftory metadata/favicon.
 - Marked later-phase navigation destinations and search as planned. No library records, import actions, routing, domain persistence, or external services were added.
 - `npm run build` and `npm run lint` passed after implementation.
-- Manual desktop/mobile browser inspection remains pending because no browser surface was available in the implementation environment. Do not treat the Phase 1 review gate as verified until that visual review is completed.
+- The Phase 5 kickoff reviewed the shell, keyboard focus, and theme switching in Chrome at desktop and mobile widths.
 
 ## Phase 2 implementation
 
@@ -52,7 +52,7 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 - Implemented manual entry to Inbox, Inbox-to-All-Saved review, item details/editing, collection/category/tag management, list/grid views, keyword search, filters, sorting, and Recently Viewed.
 - Added Vitest and fake-indexeddb. `npm run build`, `npm run lint`, and `npm test` pass; the test suite has 15 passing tests.
 - No network fetch, import batch, AI, backend, cloud sync, or backup behavior was added.
-- Manual browser review of Phase 2 screens and keyboard flows remains pending because no browser surface was available. The Phase 1 visual-review gate is also still open; the user directed Phase 2 to proceed despite that limitation.
+- The Phase 5 kickoff verified manual entry, Inbox review, category assignment, search, and reload persistence at desktop and mobile widths.
 
 ## Phase 3 implementation
 
@@ -60,7 +60,7 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 - Added review-before-save UI with editable title/description, source warnings, exact duplicate review, row selection, file/row limits, and per-row outcomes. Import never fetches a supplied link.
 - Original Instagram/bookmark row metadata is retained on the saved item. Original PDF/text bytes remain local in IndexedDB schema version 3 and can be downloaded from item detail.
 - Confirmed rows and attached source files are committed together in one IndexedDB transaction. The result report is session-only; item provenance persists.
-- `npm run build` and `npm run lint` pass. Automated Phase 3 parser/migration tests have not been added or run; manual browser and keyboard review also remains pending.
+- The Phase 5 kickoff added parser, migration, and rollback tests and verified all import formats in Chrome using synthetic fixtures.
 - No extraction, PDF text reading, AI, cloud transfer, or backup behavior was added.
 
 No existing application logic was available to reuse during the Phase 0 audit. Phase 2 confirmed `idb` over IndexedDB and native hash routes without a routing dependency. The current Phase 5 plan prioritizes an authorized ChatGPT-plan AI connection and analysis; content coverage and semantic search remain later work.
@@ -96,12 +96,13 @@ No existing application logic was available to reuse during the Phase 0 audit. P
 - Core skills are copied from the Claude Engineering Starter template (`template/.claude/skills`); optional packs come from `optional-skills/` and are chosen based on the app's stack and needs. They are copied into `.agents/skills/` and intentionally Git-ignored. The initializer accepts repeated `--include-skill <name>` flags.
 - Local skills available here: `emil-design-eng`, `improve-animations`, `review-animations`, `vercel-react-best-practices`, `graphify`, `data-integrity-and-imports`, `privacy-security-review`, `accessibility-review`, and `testing-release-readiness`. Graphify CLI remains a separate optional global install.
 - `docs/ai/CODEX_MASTER_PROMPT.md` is the full phased product brief for implementation-start tasks.
-- No runtime AI connection or analysis is implemented. The prioritized plan evaluates official Sign in with ChatGPT plan-use for an eligible local/open-source app and the ApplyDock local Codex CLI reference. Siftory will not require an API key for its planned AI feature.
+- The **Settings** route connects to an explicitly authorized ChatGPT plan while the local Vite server runs. Item detail can analyze an imported Instagram caption or a local `.txt` extraction. The local connection needs no API key.
+- `npm run ai:check` checks plan access with a standalone synthetic request. The account holder verified this with `gpt-6-sol`.
 
 ## Decisions and open setup items
 
-The Vite + React + TypeScript starter, npm, IndexedDB through `idb` (schema version 3), Vitest with fake-indexeddb, native hash routes, and Phase 3 import limits/transaction behavior are confirmed in `DECISIONS.md`. The user has confirmed ChatGPT-plan usage as the preferred AI product goal; the official Sign in with ChatGPT plan-use path is proposed pending a focused feasibility check.
+The Vite + React + TypeScript stack, npm, IndexedDB through `idb`, Vitest with fake-indexeddb, and native hash routes remain in use. Phase 5 selected the official Sign in with ChatGPT plan-use flow after a successful live check. See `DECISIONS.md` for the session and data boundaries.
 
 ## Next milestone
 
-Phase 0–4 code foundations are in place, but review gates are still open: Phase 3 parser/migration tests and Phase 1–4 manual desktop/mobile/keyboard reviews. Current build, lint, and all 23 automated tests pass. Close those gates before Phase 5 AI implementation. See `docs/PLAN.md` and `docs/phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md`.
+The account holder confirmed the in-app flow. The next milestone is durable batch analysis and incremental import. See the [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md) for steps and pending work.

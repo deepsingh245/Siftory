@@ -25,6 +25,8 @@ import type {
 import type { LibraryData } from './useLibraryData'
 import { routeHref } from '../../app/routes'
 import { ImportPage } from '../import/ImportPage'
+import { AnalysisPanel } from '../analysis/AnalysisPanel'
+import { ChatGptSettings } from '../analysis/ChatGptSettings'
 import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
 import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
 import './library.css'
@@ -37,6 +39,8 @@ type Props = {
 
 export function LibraryWorkspace({ route, data, query }: Props) {
   const [filters, setFilters] = useState<Omit<ItemFilters, 'query' | 'status'>>({ sort: 'recent' })
+
+  if (route.page === 'settings') return <ChatGptSettings />
 
   if (data.loading) {
     return <div className="library-state" role="status">Opening your local library...</div>
@@ -53,7 +57,7 @@ export function LibraryWorkspace({ route, data, query }: Props) {
   if (route.page === 'item') {
     const item = data.items.find((candidate) => candidate.id === route.id)
     if (!item) return <NotFound kind="saved item" href="#/library" />
-    return <ItemDetail item={item} data={data} />
+    return <ItemDetail key={item.id} item={item} data={data} />
   }
 
   if (route.page === 'collections' || route.page === 'categories' || route.page === 'tags') {
@@ -507,6 +511,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
             <section className="detail-panel"><h2>Description or caption</h2><p>{item.description || 'No description has been added.'}</p></section>
             <section className="detail-panel"><h2>Your notes</h2><p className="detail-notes">{item.userNotes || 'No notes yet.'}</p></section>
             <ProcessingPanel item={item} data={data} />
+            <AnalysisPanel item={item} data={data} />
           </div>
           <aside className="detail-aside" aria-label="Organize item">
             <RelationPicker title="Collections" items={data.collections} selected={item.collectionIds} onToggle={(id, checked) => toggleRelation('collectionIds', id, checked)} />

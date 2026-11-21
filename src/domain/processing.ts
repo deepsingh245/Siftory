@@ -1,4 +1,4 @@
-import type { SavedItem, SourceFileRecord } from './library'
+import type { SavedItem, SourceFileRecord } from './library.ts'
 
 export const TEXT_EXTRACTION_VERSION = 'local-text-v1'
 export const MAX_PROCESSING_SOURCE_BYTES = 20 * 1024 * 1024

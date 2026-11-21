@@ -9,7 +9,7 @@ const sources: { id: ImportKind; label: string; description: string }[] = [
   { id: 'instagram', label: 'Instagram JSON', description: 'Review saved records from a JSON export.' },
   { id: 'bookmarks', label: 'Bookmarks HTML', description: 'Import browser bookmarks and their folder paths.' },
   { id: 'url', label: 'A web link', description: 'Add one HTTP or HTTPS link without opening it.' },
-  { id: 'file', label: 'PDF or text files', description: 'Keep original files locally for a later processing phase.' },
+  { id: 'file', label: 'PDF or text files', description: 'Keep original files on this device and extract text from .txt files.' },
 ]
 
 function candidateTitle(row: ImportRow): string {
@@ -253,7 +253,7 @@ export function ImportPage({ data }: { data: LibraryData }) {
             {rows.map((row) => (
               <li className={`import-row${row.errors.length ? ' import-row--invalid' : ''}`} key={row.id}>
                 <label className="import-row-select">
-                  <input type="checkbox" checked={row.selected} disabled={!row.draft || row.errors.length > 0 || saving || savedCount !== undefined || (selectedCount >= MAX_CONFIRMED_ROWS && !row.selected)} onChange={(event) => toggleRow(row.id, event.target.checked)} />
+                  <input type="checkbox" aria-label={`Select ${candidateTitle(row)}`} checked={row.selected} disabled={!row.draft || row.errors.length > 0 || saving || savedCount !== undefined || (selectedCount >= MAX_CONFIRMED_ROWS && !row.selected)} onChange={(event) => toggleRow(row.id, event.target.checked)} />
                   <span className="import-row-content">
                     {row.draft?.url && <span className="import-row-url">{row.draft.url}</span>}
                     {row.draft?.creatorName && <span>By {row.draft.creatorName}</span>}

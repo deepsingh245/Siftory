@@ -103,4 +103,4 @@ Review the implemented library against the acceptance criteria and record actual
 
 ## Current status
 
-Implementation is complete. Build, lint, and automated domain/repository tests pass. Manual browser review of responsive layouts and keyboard flows remains pending because no browser surface was available; do not mark the review gate complete until that check is recorded.
+Implementation is complete. The Phase 5 kickoff checked manual entry, Inbox review, category assignment, keyword search, and reload persistence at desktop and mobile widths in Chrome. See the [Phase 5 baseline](PHASE-5-AI-KNOWLEDGE-FOUNDATION.md#audit-and-starting-baseline) for scope and remaining accessibility work.

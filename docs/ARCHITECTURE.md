@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based navigation under `src/app/`. Phase 3 adds local import adapters and preview UI under `src/domain/imports.ts` and `src/features/import/`; IndexedDB schema version 2 stores original imported PDF/text files. Phase 4 adds schema version 3 processing jobs, separate extracted text, queue UI, and local `.txt` extraction. Phase 5 plans the first AI connection and analysis workflow; it is not implemented. PDF extraction, broad source access, backup/restore, and research remain future work.
+This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash navigation under `src/app/`. Phase 3 adds local import adapters, preview UI, and original PDF/text storage. Phase 4 adds processing jobs, queue UI, and local `.txt` extraction. Phase 5 adds the first ChatGPT connection and individual text analysis. PDF extraction, broader source access, backup/restore, and research remain future work.
 
 ## Principles
 
@@ -56,11 +56,11 @@ Do not bind domain logic directly to a vendor SDK.
 
 ## Runtime AI boundary
 
-Codex is the local development agent. Siftory's planned runtime AI path is a distinct user-authorized ChatGPT-plan connection, not the Codex development session.
+The Vite dev and preview servers host the AI routes on the app origin. `server/chatgpt-middleware.mjs` checks loopback access and the app origin for mutations. An HTTP-only session cookie identifies the browser, and the server holds OAuth credentials in memory. `server/chatgpt-plan.mjs` uses state and PKCE for the loopback callback, verifies the ID token and separate plan-use grant, and calls OpenAI's public Responses API. The terminal diagnostic uses the same provider module.
 
-Ordinary ChatGPT sign-in does not automatically grant Siftory inference access. Evaluate the documented Sign in with ChatGPT plan-use flow for eligible open-source/local apps. It requires a separate plan-use grant and uses supported public endpoints. Do not use undocumented Codex credentials, CLI credential files, session tokens, or private endpoints.
+After explicit confirmation, item detail sends only the displayed caption or extracted text and the model choice. The server checks size and scope, requests a streamed response, and validates its structure and quoted evidence. The browser saves the result to IndexedDB schema version 4. Quoted evidence is checked against the input text, and the user reviews generated interpretations and category suggestions.
 
-If selected, keep OAuth handling and protected token storage in a local connection broker; do not expose access/refresh tokens to React, browser storage, URLs, source control, or logs. Send only explicitly selected source content after consent. The current plan-use flow has usage and capability limits; the provider adapter must report them without silent billing fallback. This is planned and not implemented.
+The current session expires or ends on disconnect or server restart. Account persistence and credential renewal are pending. The library and local extraction stay available with AI disconnected.
 
 Core library use without AI remains supported. Optional future providers must be evaluated separately; an API-key provider is not assumed or silently enabled.
 

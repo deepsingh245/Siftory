@@ -49,7 +49,7 @@ Read these project sources before implementation:
 - Summaries, classification, embeddings, semantic search, or any runtime AI provider.
 - Cloud jobs, remote queues, background processing after the browser closes, or cross-device work coordination.
 - Automatic scheduling, invented completion percentages, silent retries, or unsupported jobs represented as successful.
-- Backup/restore; Phase 7 remains responsible for portability of job history and extracted content.
+- Backup and restore of job history and extracted content are planned for Phase 8.
 
 ## Proposed job and extraction invariants
 
@@ -107,6 +107,6 @@ Read these project sources before implementation:
 
 ## Current status
 
-Implementation complete; browser review gate pending. IndexedDB v3 adds durable jobs and separate extracted content. Queue and item detail expose capability, queue/process-now, retry, skip, result preview, and download. The runner only extracts local `.txt` files up to 20 MiB with fatal UTF-8 decoding, records source fingerprint/version, and does not access the network. Active job uniqueness is enforced by an IndexedDB unique index; expired leases recover to Needs Attention. Retry preserves attempt/event history on the same job. Extracted results are retained by fingerprint and extractor version; unchanged completed work is reused.
+Implementation complete. IndexedDB v3 stores durable jobs and separate extracted content. Queue and item detail expose capability, queue/process-now, retry, skip, result preview, and download. The runner only extracts local `.txt` files up to 20 MiB with strict UTF-8 decoding and records the source fingerprint and extractor version. An IndexedDB unique index protects active job uniqueness. Expired leases recover to Needs Attention. Retry preserves attempt history and unchanged completed work is reused.
 
-Verification completed: `npm run build`, `npm run lint`, and `npm run test` pass. Automated tests cover schema v2 upgrade preservation, duplicate enqueue, result provenance, lease recovery, strict UTF-8 success/failure, and capability/state transitions. Browser multi-tab behavior is guarded by the database unique index but was not exercised in a real browser. Manual desktop/mobile and keyboard review remains open, as do the earlier Phase 1–3 manual reviews and Phase 3 parser-specific tests.
+Automated tests cover v2 upgrade, duplicate enqueue, result provenance, lease recovery, UTF-8 success and failure, and capability/state transitions. The Phase 5 kickoff checked queue persistence, skip/requeue, and extraction at desktop and mobile widths in Chrome. Multi-tab interaction still needs a browser check. See the [Phase 5 baseline](PHASE-5-AI-KNOWLEDGE-FOUNDATION.md#audit-and-starting-baseline).

@@ -73,6 +73,7 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   { label: 'Library', items: [{ label: 'All saved', icon: 'all', href: '#/library', page: 'library' }, { label: 'Inbox', icon: 'inbox', href: '#/inbox', page: 'inbox' }, { label: 'Import', icon: 'arrow', href: '#/import', page: 'import' }] },
   { label: 'Organize', items: [{ label: 'Collections', icon: 'collection', href: '#/collections', page: 'collections' }, { label: 'Categories', icon: 'category', href: '#/categories', page: 'categories' }, { label: 'Tags', icon: 'tag', href: '#/tags', page: 'tags' }] },
   { label: 'Discover', items: [{ label: 'Recently viewed', icon: 'recent', href: '#/recent', page: 'recent' }, { label: 'Research', icon: 'research' }, { label: 'Processing queue', icon: 'queue', href: '#/queue', page: 'queue' }, { label: 'Insights', icon: 'insights' }] },
+  { label: 'Workspace', items: [{ label: 'Settings', icon: 'settings', href: '#/settings', page: 'settings' }] },
 ]
 
 function NavigationGroups({ route, mobile = false }: { route: AppRoute; mobile?: boolean }) {
@@ -131,6 +132,7 @@ function routeTitle(route: AppRoute) {
   if (route.page === 'tags' || route.page === 'tag') return 'Tags'
   if (route.page === 'import') return 'Import'
   if (route.page === 'queue') return 'Processing queue'
+  if (route.page === 'settings') return 'Settings'
   return 'Saved item'
 }
 
@@ -201,7 +203,11 @@ function App() {
             <label className="search-placeholder global-search">
               <Icon name="search" size={17} />
               <span className="visually-hidden">Search your library</span>
-              <input aria-label="Search your library" type="search" value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => { if (route.page !== 'library') window.location.hash = routeHref({ page: 'library' }) }} placeholder="Search your library" />
+              <input aria-label="Search your library" type="search" value={query} onChange={(event) => {
+                const value = event.target.value
+                setQuery(value)
+                if (value.trim() && route.page !== 'library') window.location.hash = routeHref({ page: 'library' })
+              }} placeholder="Search your library" />
             </label>
           </div>
 

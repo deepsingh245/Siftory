@@ -1,6 +1,6 @@
 ﻿# Siftory Data Model
 
-This document describes the conceptual model. Phases 2–4 implement library, import, job, and extracted text entities in `src/domain/` and IndexedDB schema version 3. Analysis and research remain future entities.
+This document describes the conceptual model. The library, imports, jobs, extracted text, and individual analyses are implemented in `src/domain/` and IndexedDB schema version 4. Research sessions remain planned.
 
 ## SavedItem
 
@@ -49,9 +49,11 @@ Never overwrite original source text with extracted or corrected text.
 
 ## Analysis
 
-Structured AI-generated understanding, versioned separately.
+Structured AI-generated understanding stored separately in the `analyses` object store. The current record keeps `savedItemId`, analyzed-text fingerprint, source kind, requested model, analysis version, time, and result. Results include a summary, key points, suggested categories, and mentioned entities with source quotes, plus literal links from the analyzed text.
 
-Suggested fields:
+The result key combines item ID, the exact text fingerprint, model, and analysis version. This lets Siftory reuse an unchanged result. Item deletion also deletes its analysis records. Applying an edited category adds a normal item/category association and preserves the generated suggestion.
+
+Fields proposed for broader coverage and future versions:
 - `id`
 - `savedItemId`
 - `version`

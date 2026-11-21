@@ -23,7 +23,8 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 | Phase 4 extraction is explicit and local `.txt` only | Confirmed (2026-11-21) | Strict UTF-8 decoding, 20 MiB limit, no URL fetching or network transfer; unsupported sources show capability reasons |
 | Processing retries preserve attempts on the same job and expired leases need attention | Confirmed (2026-11-21) | Keeps history auditable and avoids presenting interrupted work as complete or silently rerunning it |
 | Siftory's core understanding workflow should use the user's ChatGPT plan when explicitly connected | Confirmed (2026-11-21) | User requirement; AI summaries, key points, categories, and mentioned links are central product value, while the base library remains usable without AI |
-| Official Sign in with ChatGPT plan-use is the preferred integration to evaluate | Proposed (2026-11-21) | OpenAI documents a plan-use flow for eligible open-source/local apps; implementation remains subject to current preview limits, eligibility, secure local token handling, and a feasibility spike |
+| Official Sign in with ChatGPT is the first AI provider | Confirmed (2026-11-21) | The user verified a live completed `gpt-6-sol` response and session revocation. The first in-app slice uses the documented loopback OAuth flow and public Responses API. |
+| The first in-app ChatGPT session lives in the local server's memory | Confirmed (2026-11-21) | Use the existing Vite dev or preview origin to keep access to the same local library. Restrict AI routes to loopback requests from the app origin. An HTTP-only cookie identifies the browser session. OpenAI receives only the selected text after the user confirms analysis. Store validated results in IndexedDB with source and model versions. |
 | Import result reports are session-only | Confirmed (2026-11-21) | Avoids another persistent history store; provenance remains on each imported item and row outcomes are shown after confirmation |
 | Phase 3 file formats | Confirmed (2026-11-21) | Instagram JSON top-level arrays, Netscape bookmark HTML, HTTP(S) URLs, PDF, and `.txt`; no URL fetch or PDF extraction |
 | Phase 3 duplicate review | Confirmed (2026-11-21) | Prefer source record ID, canonical URL, then SHA-256 file fingerprint; exact matches start unchecked; title matches are warnings only and never merge automatically |
@@ -50,7 +51,7 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 1. Long-term database migration and backup/restore format.
 2. Local transcription feasibility on the user's hardware.
-3. Complete the ChatGPT-plan provider feasibility spike and select official Sign in with ChatGPT plan-use or another explicitly verified local approach; ordinary ChatGPT sign-in is not itself an inference API grant.
+3. Choose how to preserve ChatGPT account registrations and protect renewable credentials across local server restarts. The first release slice uses an in-memory session.
 4. Semantic search/embedding provider and storage cost.
 5. Which source adapters can reliably extract actual content under legitimate access conditions.
 6. Whether any local helper process is justified for protected credentials or local model execution.

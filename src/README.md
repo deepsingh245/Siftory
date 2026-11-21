@@ -1,5 +1,5 @@
 ﻿# Application source
 
-`App.tsx` is the responsive Siftory shell. `features/library/` contains Inbox, All Saved, detail, organization, search, filtering, and recent-history views. `features/import/` provides local import previews and confirmation. `domain/imports.ts` parses Instagram JSON and bookmark HTML, validates manual URLs and PDF/text files, and prepares provenance-safe records. `infrastructure/persistence/` stores library records and original imported files in IndexedDB schema version 3. The processing queue extracts imported local `.txt` files only; PDF extraction, URL fetching, AI account connection/analysis, backup/restore, and research are not implemented yet.
+`App.tsx` is the responsive Siftory shell. `features/library/` contains the library and organization views. `features/import/` previews and confirms local imports, and `features/processing/` handles local text extraction. `features/analysis/` connects Settings to the local server and shows analysis for individual items. `infrastructure/persistence/` stores the library, extraction results, and versioned analyses in IndexedDB schema version 4.
 
 Other folders are architectural boundaries from `docs/ARCHITECTURE.md`; they do not imply that later-phase features exist.

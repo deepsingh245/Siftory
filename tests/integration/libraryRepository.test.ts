@@ -1,8 +1,10 @@
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { deleteDB } from 'idb'
+import { deleteDB, openDB } from 'idb'
 import type { Category, Collection, SavedItem, Tag } from '../../src/domain/library'
+import type { Analysis } from '../../src/domain/analysis'
 import { createSavedItem } from '../../src/domain/library'
+import { parseSourceFile, toImportedItems } from '../../src/domain/imports'
 import { createLibraryRepository } from '../../src/infrastructure/persistence/libraryRepository'
 import { databaseName, databaseVersion, openLibraryDatabase } from '../../src/infrastructure/persistence/libraryDatabase'
 
@@ -24,6 +26,53 @@ function newItem(id: string): SavedItem {
 }
 
 describe('local library database', () => {
+  it('preserves v1 library relationships and saves originals after an upgrade', async () => {
+    const legacy = await openDB(name, 1, {
+      upgrade(db) {
+        const items = db.createObjectStore('savedItems', { keyPath: 'id' })
+        items.createIndex('by-status', 'status')
+        items.createIndex('by-url', 'canonicalUrl')
+        items.createIndex('by-updated', 'updatedAt')
+        items.createIndex('by-last-viewed', 'lastViewedAt')
+        for (const store of ['collections', 'categories', 'tags']) {
+          db.createObjectStore(store, { keyPath: 'id' }).createIndex('by-name', 'name')
+        }
+      },
+    })
+    const item = { ...newItem('legacy'), collectionIds: ['collection'], categoryIds: ['category'], tagIds: ['tag'] }
+    try {
+      await legacy.add('savedItems', item)
+      await legacy.add('collections', { id: 'collection', name: 'Reading' })
+      await legacy.add('categories', { id: 'category', name: 'Engineering' })
+      await legacy.add('tags', { id: 'tag', name: 'Reference' })
+    } finally {
+      legacy.close()
+    }
+
+    expect(await repository.getItem(item.id)).toEqual(item)
+    expect(await repository.getCollections()).toMatchObject([{ id: 'collection' }])
+    expect(await repository.getCategories()).toMatchObject([{ id: 'category' }])
+    expect(await repository.getTags()).toMatchObject([{ id: 'tag' }])
+
+    const { rows } = await parseSourceFile(new File(['original content'], 'notes.txt'))
+    const { items, files } = toImportedItems(rows)
+    await repository.saveImportedBatch(items, files)
+    await repository.close()
+    expect(await repository.getItem(items[0].id)).toEqual(items[0])
+    expect(await (await repository.getSourceFile(items[0].id))?.blob.text()).toBe('original content')
+  })
+
+  it('rolls back imported records and files together if any record write fails', async () => {
+    const existing = newItem('existing')
+    await repository.saveItem(existing)
+    const { rows } = await parseSourceFile(new File(['source'], 'notes.txt'))
+    const { items, files } = toImportedItems(rows)
+
+    await expect(repository.saveImportedBatch([...items, existing], files)).rejects.toMatchObject({ name: 'ConstraintError' })
+    expect(await repository.getItems()).toEqual([existing])
+    expect(await repository.getSourceFile(items[0].id)).toBeUndefined()
+  })
+
   it('creates the versioned schema and keeps items after closing and reopening', async () => {
     const item = newItem('persisted')
     await repository.saveItem(item)
@@ -35,7 +84,7 @@ describe('local library database', () => {
 
     const db = await openLibraryDatabase(name)
     expect(db.version).toBe(databaseVersion)
-    expect([...db.objectStoreNames]).toEqual(['categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags'])
+    expect([...db.objectStoreNames]).toEqual(['analyses', 'categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags'])
     db.close()
   })
 
@@ -84,5 +133,25 @@ describe('local library database', () => {
     await repository.deleteItem('remove-me')
     expect(await repository.getItem('remove-me')).toBeUndefined()
     expect(await repository.getItems()).toEqual([])
+  })
+
+  it('keeps analyses separate and removes them when the item is removed', async () => {
+    const item = newItem('analysis-item')
+    const analysis: Analysis = {
+      id: 'versioned-result', savedItemId: item.id, model: 'gpt-6-sol', provider: 'chatgpt-plan', fingerprint: 'fingerprint', version: '1', kind: 'caption',
+      createdAt: item.createdAt, links: [], result: { summary: { text: 'Summary', evidence: 'Quote' }, points: [], categories: [], mentions: [] },
+    }
+    await repository.saveItem(item)
+    await repository.saveAnalysis(analysis)
+    await repository.close()
+    expect(await repository.getAnalyses(item.id)).toEqual([analysis])
+    expect(await repository.getItem(item.id)).toEqual(item)
+    await repository.applySuggestedCategory(item.id, 'Research')
+    await repository.applySuggestedCategory(item.id, 'research')
+    expect(await repository.getCategories()).toHaveLength(1)
+    expect((await repository.getItem(item.id))?.categoryIds).toHaveLength(1)
+    await repository.deleteItem(item.id)
+    expect(await repository.getAnalyses(item.id)).toEqual([])
+    await expect(repository.saveAnalysis(analysis)).rejects.toThrow('removed')
   })
 })

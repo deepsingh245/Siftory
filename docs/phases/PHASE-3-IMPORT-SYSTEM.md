@@ -107,4 +107,4 @@ Read these project sources before implementation:
 
 ## Current status
 
-Core Phase 3 implementation is in place. Production build and lint pass. Automated parser/migration tests and manual desktop/mobile/keyboard review remain outstanding; do not close the phase gate until those checks are recorded. Instagram format assumptions remain until validated against a real export sample.
+Phase 3 is implemented. The Phase 5 kickoff added synthetic parser, schema-upgrade, and batch-rollback tests. Chrome checks covered every import method, malformed rows, duplicate review, and original file retention. See the [Phase 5 baseline](PHASE-5-AI-KNOWLEDGE-FOUNDATION.md#audit-and-starting-baseline) for the browser evidence and current limits.

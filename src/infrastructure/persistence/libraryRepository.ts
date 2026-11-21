@@ -1,4 +1,5 @@
 import type { IDBPDatabase } from 'idb'
+import type { Analysis } from '../../domain/analysis'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import { MAX_PROCESSING_SOURCE_BYTES } from '../../domain/processing'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
@@ -84,6 +85,48 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async getExtractedContentForSource(savedItemId: string, fingerprint: string, version: string) {
       return (await connection()).getFromIndex('extractedContent', 'by-source-key', [savedItemId, fingerprint, version])
+    },
+
+    async getAnalyses(id: string) {
+      return (await connection()).getAllFromIndex('analyses', 'by-item', id)
+    },
+
+    async saveAnalysis(analysis: Analysis) {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'analyses'], 'readwrite')
+      try {
+        const item = await tx.objectStore('savedItems').get(analysis.savedItemId)
+        if (!item) throw new Error('The saved item was removed before its analysis could be stored.')
+        await tx.objectStore('analyses').put(analysis)
+        await tx.done
+      } catch (error) {
+        await tx.done.catch(() => undefined)
+        throw error
+      }
+    },
+
+    async applySuggestedCategory(id: string, name: string) {
+      const label = name.trim()
+      if (!label || label.length > 80) throw new Error('Enter a category name of up to 80 characters.')
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'categories'], 'readwrite')
+      try {
+        const items = tx.objectStore('savedItems')
+        const item = await items.get(id)
+        if (!item) throw new Error('The saved item was removed.')
+        const categories = tx.objectStore('categories')
+        const found = (await categories.getAll()).find((category) => category.name.toLowerCase() === label.toLowerCase())
+        const now = new Date().toISOString()
+        const categoryId = found?.id ?? crypto.randomUUID()
+        const writes = []
+        if (!found) writes.push(categories.add({ id: categoryId, name: label, createdAt: now, updatedAt: now }))
+        if (!item.categoryIds.includes(categoryId)) writes.push(items.put({ ...item, categoryIds: [...item.categoryIds, categoryId], updatedAt: now }))
+        await Promise.all(writes)
+        await tx.done
+      } catch (error) {
+        await tx.done.catch(() => undefined)
+        throw error
+      }
     },
 
     async enqueueProcessingJob(job: ProcessingJob) {
@@ -326,14 +369,16 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses'], 'readwrite')
       const jobs = await tx.objectStore('processingJobs').index('by-item').getAllKeys(id)
       const contents = await tx.objectStore('extractedContent').index('by-item').getAllKeys(id)
+      const analyses = await tx.objectStore('analyses').index('by-item').getAllKeys(id)
       await tx.objectStore('savedItems').delete(id)
       await tx.objectStore('sourceFiles').delete(id)
       await Promise.all([
         ...jobs.map((key) => tx.objectStore('processingJobs').delete(key)),
         ...contents.map((key) => tx.objectStore('extractedContent').delete(key)),
+        ...analyses.map((key) => tx.objectStore('analyses').delete(key)),
       ])
       await tx.done
     },

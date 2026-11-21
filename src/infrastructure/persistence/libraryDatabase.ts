@@ -2,9 +2,10 @@ import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
+import type { Analysis } from '../../domain/analysis'
 
 export const databaseName = 'siftory-library'
-export const databaseVersion = 3
+export const databaseVersion = 4
 
 export interface LibraryDatabase extends DBSchema {
   savedItems: {
@@ -57,6 +58,11 @@ export interface LibraryDatabase extends DBSchema {
       'by-created': string
     }
   }
+  analyses: {
+    key: string
+    value: Analysis
+    indexes: { 'by-item': string }
+  }
 }
 
 export type LibraryDatabaseConnection = IDBPDatabase<LibraryDatabase>
@@ -101,6 +107,7 @@ export function openLibraryDatabase(name = databaseName, onBlocked?: () => void)
         extracted.createIndex('by-source-key', ['savedItemId', 'sourceFingerprint', 'processingVersion'])
         extracted.createIndex('by-created', 'extractedAt')
       }
+      if (oldVersion < 4) db.createObjectStore('analyses', { keyPath: 'id' }).createIndex('by-item', 'savedItemId')
     },
     blocked() {
       onBlocked?.()

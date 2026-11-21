@@ -71,7 +71,7 @@ Exit criteria:
 - Imported items appear in Inbox.
 - Test fixtures cover valid, malformed and edge-case records.
 
-Current status: Core import UI and persistence are implemented. Automated parser/migration fixtures and manual browser/keyboard review remain outstanding; keep the Phase 3 exit gate open.
+Current status: Implemented. The Phase 5 kickoff added parser, migration, and rollback tests and reviewed import flows at desktop and mobile widths in Chrome.
 
 ## Phase 4 — Processing foundation
 
@@ -89,12 +89,12 @@ Exit criteria:
 - Unsupported sources are clearly identified.
 - No false completion states.
 
-Current status: Implementation is complete and build, lint, and automated tests pass. Schema v3, explicit queue controls, local strict UTF-8 `.txt` extraction, capability reporting, retry/skip history, and expired-job recovery are implemented. Manual desktop/mobile and keyboard review remains outstanding; see `docs/phases/PHASE-4-PROCESSING-FOUNDATION.md`.
+Current status: Implemented. The Phase 5 kickoff verified queue persistence and recovery controls, local text extraction, and result display in Chrome.
 
 ## Phase 5 — AI-powered knowledge (priority)
 
 Tasks:
-- Close Phase 3 parser/migration tests and Phase 1–4 manual browser, responsive, and keyboard review gates before implementation.
+- Verify the Phase 1–4 baseline with parser and migration tests and browser checks at desktop and mobile widths. Results are recorded in the Phase 5 plan.
 - Evaluate official Sign in with ChatGPT plan-use for an open-source/local app; compare it with ApplyDock's local Codex CLI helper.
 - Implement the selected authorized ChatGPT-plan connection without API keys, private endpoints, or browser-exposed credentials.
 - Analyze available Instagram export captions/metadata and extracted text into summaries, key points, editable categories, mentioned links/tools/sites/products, and traceable evidence.
@@ -108,7 +108,7 @@ Exit criteria:
 - Usage/auth failures pause work with clear reasons and never fall back to paid billing without consent.
 - Unsupported/missing media is labeled honestly; no arbitrary URL fetch or invented analysis.
 
-Current status: Planned; AI integration and analysis have not started. Phase 4 supplies only local `.txt` extraction and processing-job infrastructure. Phase 3 parser/migration tests and Phase 1–4 manual reviews remain open.
+Current status: The terminal check passed live, and the account holder confirmed the working in-app flow. Persistent accounts, durable batch jobs, and large-export handling remain open.
 
 ## Phase 6 — Source coverage: Instagram and YouTube
 

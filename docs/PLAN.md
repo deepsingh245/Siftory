@@ -61,7 +61,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** The shell works at desktop and mobile sizes in both themes; focus and keyboard behavior are clear; shared components use the design tokens; visible controls have real behavior or are clearly marked as unavailable.
 
-**Current status:** Implementation complete; review gate pending. The responsive shell, theme switch, planned navigation states, and honest library empty state are implemented. Build and lint pass. Manual desktop/mobile browser review remains outstanding because no browser surface was available in the implementation environment.
+**Current status:** Implemented. Chrome checks at desktop and mobile widths covered theme switching, visible keyboard focus, and navigation during the Phase 5 kickoff.
 
 ### Phase 2 — Library foundation
 
@@ -71,7 +71,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** Real local records can be created, viewed, edited, organized, searched, and removed; relationships survive reloads; no AI setup is required for core library use.
 
-**Current status:** Implementation complete; review gate pending. Manual entry, IndexedDB persistence, Inbox/All Saved, item detail, collections/categories/tags, keyword search, filters, sorting, and recently viewed are implemented. Build, lint, and 15 automated tests pass. Browser-based desktop/mobile and keyboard review remains outstanding because no browser surface was available.
+**Current status:** Implemented. The Phase 5 kickoff verified manual entry, Inbox review, category assignment, search, and reload persistence at desktop and mobile widths.
 
 ### Phase 3 — Import system
 
@@ -81,7 +81,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** Valid records import with source metadata preserved; malformed rows have reasons; ambiguous duplicates remain reviewable; unsupported or inaccessible content is reported honestly. No platform credentials or access-control bypass is introduced.
 
-**Current status:** Core implementation is in place: local adapters, review/duplicate preview, explicit Inbox confirmation, and IndexedDB source-file storage. Build and lint pass. Automated Phase 3 parser/migration tests and manual browser/keyboard review remain outstanding, so the phase gate is open. Assumptions and limits are recorded in `docs/phases/PHASE-3-IMPORT-SYSTEM.md` and `docs/DECISIONS.md`.
+**Current status:** Implemented. The Phase 5 kickoff added parser, migration, and rollback coverage and exercised all import sources with synthetic fixtures in Chrome.
 
 ### Phase 4 — Processing foundation
 
@@ -91,7 +91,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** Queue state survives refresh; failures can be understood and retried; duplicate concurrent work is prevented; unsupported sources are identified; the UI explains that browser-only processing runs while the app is open.
 
-**Current status:** Implementation complete; review gate pending. IndexedDB v3 persists processing jobs and extracted text separately. Users can queue, process now, retry, skip, and inspect results. Only local `.txt` files are extracted, with strict UTF-8 decoding; other sources remain explicitly unsupported. Queue jobs are explicit-start, leased, recoverable, and protected against duplicate active jobs. Build, lint, and automated tests pass. Browser desktop/mobile and keyboard review remains open, as do Phase 3 parser/migration tests. See `docs/phases/PHASE-4-PROCESSING-FOUNDATION.md`.
+**Current status:** Implemented. The Phase 5 kickoff verified queue persistence, skip and requeue, local `.txt` extraction, and result display in Chrome. The Phase 4 plan records the supported sources and processing limits.
 
 ### Phase 5 — AI-powered knowledge (priority)
 
@@ -100,6 +100,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 **Work:** Validate the official Sign in with ChatGPT plan-use flow for an open-source/local app; compare it with ApplyDock's local Codex CLI helper; implement the selected safe local connection; disclose exactly what leaves local storage and require explicit consent. Build a durable analysis queue and versioned results for available Instagram export captions/metadata and extracted text: summaries, key points, editable categories/tags, mentioned links/sites/tools/products, and source evidence. Revisit import size and batching so large exports can be processed incrementally. Never fetch arbitrary URLs or imply unavailable media was analyzed.
 
 **Gate:** The user can connect the intended ChatGPT account and explicitly allow plan usage; submit an imported text-bearing item; see validated, stored summaries, key points, categories, and mentioned links with provenance; edit or reject classifications; retry safely; and see clear usage/failure limits. No API key or hidden Codex credential is required. Phase 3 parser/migration tests and Phase 1–4 manual review debt must be closed before implementation starts.
+
+**Current status:** The account holder confirmed the live in-app flow after the model list size fix. Automated checks cover individual analysis with simulated provider responses. Persistent accounts, durable analysis jobs, and large exports remain open.
 
 ### Phase 6 — Source coverage: Instagram and YouTube
 
@@ -138,8 +140,6 @@ Before coding a phase, create a focused plan under `docs/phases/` using the phas
 
 Review and agree on that focused plan before substantial implementation. Complete and review one phase before planning the next; revise this overview only when product scope, dependencies, or confirmed decisions change.
 
-## Phase audit and next gate
+## Current milestone
 
-**Audit result:** Phase 0 implementation/audit is complete. Phases 1 and 2 are implemented with build/tests, but manual desktop/mobile/keyboard reviews remain open. Phase 3 import code is implemented, but parser/migration tests and manual review remain open. Phase 4 processing code is implemented; current build, lint, and 23 automated tests pass, but manual browser/keyboard review remains open. These phases are not all fully closed.
-
-**Next gate:** Close Phase 3 parser/migration tests and complete the outstanding Phase 1–4 browser, responsive, and keyboard checks. Then execute Phase 5 as the next product priority. `docs/phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md` records the focused plan; AI implementation has not started.
+The single-item AI workflow is working in the app. The next milestone is to make it usable across a large saved library with durable analysis jobs and incremental imports. See the [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md) for the current workflow.
