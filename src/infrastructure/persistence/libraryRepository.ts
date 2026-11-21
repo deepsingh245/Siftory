@@ -1,13 +1,20 @@
-import type { IDBPDatabase } from 'idb'
-import type { Analysis } from '../../domain/analysis'
+import type { IDBPDatabase, IDBPTransaction } from 'idb'
+import { prepareAnalysisInput } from '../../domain/analysis'
+import type { Analysis, AnalysisInput } from '../../domain/analysis'
+import { analysisAttemptLeaseMs, maxAnalysisBatchSize } from '../../domain/analysisQueue'
+import type { AnalysisJob } from '../../domain/analysisQueue'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
-import { MAX_PROCESSING_SOURCE_BYTES } from '../../domain/processing'
+import { MAX_PROCESSING_SOURCE_BYTES, TEXT_EXTRACTION_VERSION } from '../../domain/processing'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
 import { databaseName } from './libraryDatabase'
 import { openLibraryDatabase } from './libraryDatabase'
 import type { LibraryDatabase } from './libraryDatabase'
 
 export type LibraryRepository = ReturnType<typeof createLibraryRepository>
+
+type ImportReviewResult = { savedIds: string[]; duplicates: { itemId: string; existing: SavedItem }[] }
+const analysisStores = ['savedItems', 'extractedContent', 'analyses', 'analysisJobs'] as const
+type AnalysisTransaction = IDBPTransaction<LibraryDatabase, typeof analysisStores, 'readwrite'>
 
 export function createLibraryRepository(name = databaseName, onBlocked?: () => void) {
   let connectionPromise: Promise<IDBPDatabase<LibraryDatabase>> | undefined
@@ -25,6 +32,32 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
     })
     connectionPromise = opening
     return opening
+  }
+
+  async function writeAnalysis<T>(action: (tx: AnalysisTransaction) => Promise<T>): Promise<T> {
+    const tx = (await connection()).transaction(analysisStores, 'readwrite')
+    try {
+      const value = await action(tx)
+      await tx.done
+      return value
+    } catch (error) {
+      await tx.done.catch(() => undefined)
+      throw error
+    }
+  }
+
+  async function sourceMatches(tx: AnalysisTransaction, itemId: string, expected: AnalysisInput) {
+    const item = await tx.objectStore('savedItems').get(itemId)
+    if (!item) return false
+    const extraction = expected.kind === 'extracted-text' && item.sourceFingerprint
+      ? await tx.objectStore('extractedContent').index('by-source-key').get([itemId, item.sourceFingerprint, TEXT_EXTRACTION_VERSION])
+      : undefined
+    const current = prepareAnalysisInput(item, extraction)
+    return current?.text === expected.text && current.kind === expected.kind
+  }
+
+  function finishAttempt(job: AnalysisJob, status: AnalysisJob['status'], message?: string, now = Date.now()): AnalysisJob {
+    return { ...job, status, message, attemptId: undefined, leaseUntil: undefined, updatedAt: new Date(now).toISOString() }
   }
 
   return {
@@ -46,17 +79,33 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       return (await connection()).getFromIndex('savedItems', 'by-url', url)
     },
 
-    async saveImportedBatch(items: SavedItem[], files: SourceFileRecord[]) {
-      if (!items.length) return
+    async saveImportedBatch(items: SavedItem[], files: SourceFileRecord[], keepDuplicateIds?: ReadonlySet<string>): Promise<ImportReviewResult> {
+      const result: ImportReviewResult = { savedIds: [], duplicates: [] }
+      if (!items.length) return result
       const db = await connection()
       const tx = db.transaction(['savedItems', 'sourceFiles'], 'readwrite')
       try {
-        const requests = [
-          ...items.map((item) => tx.objectStore('savedItems').add(item)),
-          ...files.map((file) => tx.objectStore('sourceFiles').add(file)),
-        ]
-        await Promise.all(requests)
+        const saved = tx.objectStore('savedItems')
+        const sources = tx.objectStore('sourceFiles')
+        const filesByItem = new Map(files.map((file) => [file.savedItemId, file]))
+        for (const item of items) {
+          if (keepDuplicateIds && !keepDuplicateIds.has(item.id)) {
+            const existing = (item.sourceRecordId && await saved.index('by-source-record').get([item.sourceType, item.sourceRecordId])) ||
+              (item.canonicalUrl && await saved.index('by-url').get(item.canonicalUrl)) ||
+              (item.sourceFingerprint && await saved.index('by-fingerprint').get(item.sourceFingerprint)) ||
+              (item.importRecordKey && await saved.index('by-import-key').get(item.importRecordKey))
+            if (existing) {
+              result.duplicates.push({ itemId: item.id, existing })
+              continue
+            }
+          }
+          await saved.add(item)
+          const file = filesByItem.get(item.id)
+          if (file) await sources.add(file)
+          result.savedIds.push(item.id)
+        }
         await tx.done
+        return result
       } catch (cause) {
         await tx.done.catch(() => undefined)
         throw cause
@@ -89,6 +138,89 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async getAnalyses(id: string) {
       return (await connection()).getAllFromIndex('analyses', 'by-item', id)
+    },
+
+    async getAnalysis(id: string) {
+      return (await connection()).get('analyses', id)
+    },
+
+    async getAnalysisJobs() {
+      return (await connection()).getAll('analysisJobs')
+    },
+
+    async enqueueAnalysisJobs(candidates: AnalysisJob[]) {
+      if (candidates.length > maxAnalysisBatchSize) throw new Error(`Select up to ${maxAnalysisBatchSize} items at a time.`)
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        for (const candidate of candidates) {
+          if (!await tx.objectStore('savedItems').getKey(candidate.savedItemId)) continue
+          if (await tx.objectStore('analyses').getKey(candidate.id)) continue
+          const existing = await store.get(candidate.id)
+          if (!existing) await store.add(candidate)
+          else if (existing.status !== 'analyzing' && existing.status !== 'queued') await store.put(finishAttempt(existing, 'queued'))
+        }
+      })
+    },
+
+    async claimAnalysisJob(id: string, expected: AnalysisInput, now = Date.now()) {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const job = await store.get(id)
+        if (job?.status !== 'queued') return { state: 'unavailable' } as const
+        if (await tx.objectStore('analyses').getKey(id)) {
+          await store.put(finishAttempt(job, 'completed', 'Reused the saved analysis.', now))
+          return { state: 'cached' } as const
+        }
+        if (await store.index('by-status').count('analyzing')) return { state: 'busy' } as const
+        if (!await sourceMatches(tx, job.savedItemId, expected)) {
+          await store.put(finishAttempt(job, 'needs-attention', 'The source text changed or was removed. Review it again from the saved item.', now))
+          return { state: 'changed' } as const
+        }
+        const attemptId = crypto.randomUUID()
+        await store.put({ ...job, status: 'analyzing', attemptId, leaseUntil: now + analysisAttemptLeaseMs, attempts: job.attempts + 1, updatedAt: new Date(now).toISOString() })
+        return { state: 'claimed', attemptId } as const
+      })
+    },
+
+    async completeAnalysisJob(analysis: Analysis, attemptId: string, expected: AnalysisInput, now = Date.now()) {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const job = await store.get(analysis.id)
+        if (job?.status !== 'analyzing' || job.attemptId !== attemptId || (job.leaseUntil ?? 0) <= now) return false
+        if (job.savedItemId !== analysis.savedItemId || job.fingerprint !== analysis.fingerprint || job.model !== analysis.model ||
+          job.version !== analysis.version || !await sourceMatches(tx, job.savedItemId, expected)) {
+          await store.put(finishAttempt(job, 'needs-attention', 'The source changed during analysis. Review it again from the saved item.', now))
+          return false
+        }
+        await tx.objectStore('analyses').put(analysis)
+        await store.put(finishAttempt(job, 'completed', undefined, now))
+        return true
+      })
+    },
+
+    async failAnalysisJob(id: string, attemptId: string, status: 'failed' | 'needs-attention', message: string) {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const job = await store.get(id)
+        if (job?.status === 'analyzing' && job.attemptId === attemptId) await store.put(finishAttempt(job, status, message))
+      })
+    },
+
+    async setAnalysisJobQueueState(id: string, status: 'queued' | 'skipped') {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const job = await store.get(id)
+        if (job && job.status !== 'analyzing' && job.status !== 'completed') await store.put(finishAttempt(job, status))
+      })
+    },
+
+    async recoverExpiredAnalysisJobs(now = Date.now()) {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const interrupted = (await store.index('by-status').getAll('analyzing')).filter((job) => (job.leaseUntil ?? 0) <= now)
+        await Promise.all(interrupted.map((job) => store.put(finishAttempt(job, 'needs-attention', 'Analysis stopped before a result was saved. Review the text and retry.', now))))
+        return interrupted.length
+      })
     },
 
     async saveAnalysis(analysis: Analysis) {
@@ -369,16 +501,18 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses', 'analysisJobs'], 'readwrite')
       const jobs = await tx.objectStore('processingJobs').index('by-item').getAllKeys(id)
       const contents = await tx.objectStore('extractedContent').index('by-item').getAllKeys(id)
       const analyses = await tx.objectStore('analyses').index('by-item').getAllKeys(id)
+      const analysisJobs = await tx.objectStore('analysisJobs').index('by-item').getAllKeys(id)
       await tx.objectStore('savedItems').delete(id)
       await tx.objectStore('sourceFiles').delete(id)
       await Promise.all([
         ...jobs.map((key) => tx.objectStore('processingJobs').delete(key)),
         ...contents.map((key) => tx.objectStore('extractedContent').delete(key)),
         ...analyses.map((key) => tx.objectStore('analyses').delete(key)),
+        ...analysisJobs.map((key) => tx.objectStore('analysisJobs').delete(key)),
       ])
       await tx.done
     },

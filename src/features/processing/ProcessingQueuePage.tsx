@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ProcessingJob } from '../../domain/processing'
 import { displayTitle } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
+import { AnalysisQueuePanel } from '../analysis/AnalysisQueuePanel'
 
 function statusLabel(status: string): string {
   return status.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
@@ -36,7 +37,7 @@ export function ProcessingQueuePage({ data }: { data: LibraryData }) {
         <button className="primary-button" type="button" onClick={() => void startQueue()} disabled={starting || queuedCount === 0}>{starting ? 'Processing queue…' : `Start queue (${queuedCount})`}</button>
       </div>
 
-      <p className="processing-queue-boundary">Phase 4 processes local .txt files only. PDF extraction, URLs, video, transcription, and AI analysis are not available. Closing the app pauses work; no background processing is promised.</p>
+      <p className="processing-queue-boundary">Text extraction handles local .txt files only. PDF extraction, URLs, video, and transcription are not available. Closing the app pauses work; no background processing is promised.</p>
       {error && <p className="library-error" role="alert">{error}</p>}
       <div className="processing-queue-summary" aria-live="polite">
         <span>{queuedCount} queued</span>
@@ -55,6 +56,7 @@ export function ProcessingQueuePage({ data }: { data: LibraryData }) {
           <a className="quiet-button" href="#/inbox">Go to Inbox</a>
         </div>
       )}
+      <AnalysisQueuePanel data={data} />
     </section>
   )
 }

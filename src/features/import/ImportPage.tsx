@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { MAX_CONFIRMED_ROWS, MAX_IMPORT_DOCUMENT_BYTES, MAX_IMPORT_ROWS, MAX_IMPORT_TOTAL_BYTES, MAX_SOURCE_FILE_BYTES, formatBytes, parseBookmarksHtml, parseInstagramJson, parseManualUrl, parseSourceFile, toImportedItems } from '../../domain/imports'
+import { MAX_CONFIRMED_ROWS, MAX_IMPORT_DOCUMENT_BYTES, MAX_IMPORT_ROWS, MAX_IMPORT_TOTAL_BYTES, MAX_SOURCE_FILE_BYTES, fingerprintBlob, formatBytes, parseBookmarksHtml, parseInstagramJson, parseManualUrl, parseSourceFile, toImportedItems } from '../../domain/imports'
 import type { ImportKind, ImportParseResult, ImportRow } from '../../domain/imports'
 import { displayTitle } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
+
+const rowsPerPage = 50
 
 const sources: { id: ImportKind; label: string; description: string }[] = [
   { id: 'instagram', label: 'Instagram JSON', description: 'Review saved records from a JSON export.' },
@@ -34,6 +36,7 @@ function identifyDuplicates(rows: ImportRow[], items: LibraryData['items']): Imp
   const sourceRecords = new Map<string, { id: string; title: string }>(items.flatMap((item) => item.sourceRecordId ? [[`${item.sourceType}:${item.sourceRecordId}`, { id: item.id, title: displayTitle(item) }] as const] : []))
   const urls = new Map(items.flatMap((item) => item.canonicalUrl ? [[item.canonicalUrl, { id: item.id, title: displayTitle(item) }] as const] : []))
   const fingerprints = new Map(items.flatMap((item) => item.sourceFingerprint ? [[item.sourceFingerprint, { id: item.id, title: displayTitle(item) }] as const] : []))
+  const importKeys = new Map(items.flatMap((item) => item.importRecordKey ? [[item.importRecordKey, { id: item.id, title: displayTitle(item) }] as const] : []))
   const seenUrls = new Map<string, { id: string; title: string }>()
   const seenFingerprints = new Map<string, { id: string; title: string }>()
   const seenSourceRecords = new Map<string, { id: string; title: string }>()
@@ -46,6 +49,7 @@ function identifyDuplicates(rows: ImportRow[], items: LibraryData['items']): Imp
     const exactDuplicate = (sourceRecordKey && (sourceRecords.get(sourceRecordKey) || seenSourceRecords.get(sourceRecordKey)))
       || (canonical && (urls.get(canonical) || seenUrls.get(canonical)))
       || (row.sourceFingerprint && (fingerprints.get(row.sourceFingerprint) || seenFingerprints.get(row.sourceFingerprint)))
+      || (row.importRecordKey && importKeys.get(row.importRecordKey))
     const possibleDuplicate = !exactDuplicate && titleKey ? titles.get(titleKey) || seenTitles.get(titleKey) : undefined
     const duplicate = exactDuplicate || possibleDuplicate
     if (canonical) seenUrls.set(canonical, { id: row.id, title: candidateTitle(row) })
@@ -77,36 +81,39 @@ export function ImportPage({ data }: { data: LibraryData }) {
   const [title, setTitle] = useState('')
   const [working, setWorking] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [savedCount, setSavedCount] = useState<number>()
-  const [savedRowIds, setSavedRowIds] = useState<string[]>([])
+  const [savedRowIds, setSavedRowIds] = useState<Set<string>>(() => new Set())
+  const [page, setPage] = useState(0)
+  const [saveStatus, setSaveStatus] = useState<string>()
   const [saveError, setSaveError] = useState<string>()
 
   function changeKind(next: ImportKind) {
     setKind(next)
+    clearPreview()
+  }
+
+  function clearPreview() {
     setRows([])
     setParseErrors([])
-    setSavedCount(undefined)
-    setSavedRowIds([])
+    setSavedRowIds(new Set())
+    setPage(0)
+    setSaveStatus(undefined)
     setSaveError(undefined)
   }
 
   function acceptResult(result: ImportParseResult) {
     setRows(identifyDuplicates(result.rows, data.items))
     setParseErrors(result.errors)
-    setSavedCount(undefined)
-    setSavedRowIds([])
+    setSavedRowIds(new Set())
+    setPage(0)
+    setSaveStatus(undefined)
     setSaveError(undefined)
   }
 
   async function handleFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    setRows([])
-    setParseErrors([])
-    setSavedCount(undefined)
-    setSavedRowIds([])
-    setSaveError(undefined)
     if (!files.length) return
+    clearPreview()
     setWorking(true)
     try {
       const totalBytes = files.reduce((sum, file) => sum + file.size, 0)
@@ -138,7 +145,16 @@ export function ImportPage({ data }: { data: LibraryData }) {
           return
         }
         const text = await file.text()
-        acceptResult(kind === 'instagram' ? parseInstagramJson(text) : parseBookmarksHtml(text))
+        if (kind === 'instagram') {
+          const result = parseInstagramJson(text)
+          if (result.rows.length) {
+            const fingerprint = await fingerprintBlob(file)
+            result.rows.forEach((row, index) => { row.importRecordKey = `${fingerprint}:${index}` })
+          }
+          acceptResult(result)
+        } else {
+          acceptResult(parseBookmarksHtml(text))
+        }
         return
       }
 
@@ -164,16 +180,25 @@ export function ImportPage({ data }: { data: LibraryData }) {
 
   function toggleRow(id: string, selected: boolean) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, selected } : row))
-    setSavedCount(undefined)
-    setSavedRowIds([])
   }
 
   function updateDraft(id: string, field: 'title' | 'description', value: string) {
     setRows((current) => current.map((row) => row.id === id && row.draft
       ? { ...row, draft: { ...row.draft, [field]: value } }
       : row))
-    setSavedCount(undefined)
-    setSavedRowIds([])
+  }
+
+  function selectNextBatch() {
+    const alreadySelected = rows.filter((row) => row.selected).length
+    const next = rows.filter((row) => !row.selected && selectAutomatically(row)).slice(0, MAX_CONFIRMED_ROWS - alreadySelected)
+    const selected = new Set(next.map((row) => row.id))
+    if (!next.length) return
+    setRows((current) => current.map((row) => selected.has(row.id) ? { ...row, selected: true } : row))
+    setPage(Math.floor(rows.indexOf(next[0]) / rowsPerPage))
+  }
+
+  function selectAutomatically(row: ImportRow) {
+    return row.draft && !row.errors.length && !savedRowIds.has(row.id) && row.duplicateOf?.kind !== 'exact'
   }
 
   async function saveSelected() {
@@ -185,11 +210,22 @@ export function ImportPage({ data }: { data: LibraryData }) {
     }
     setSaving(true)
     setSaveError(undefined)
+    setSaveStatus(undefined)
     try {
       const { items, files } = toImportedItems(selected)
-      await data.actions.saveImportedBatch(items, files)
-      setSavedCount(items.length)
-      setSavedRowIds(selected.map((row) => row.id))
+      const rowByItem = new Map(items.map((item, index) => [item.id, selected[index]]))
+      const explicitlyKept = new Set(items.filter((item) => rowByItem.get(item.id)?.duplicateOf?.kind === 'exact').map((item) => item.id))
+      const { savedIds, duplicates } = await data.actions.saveImportedBatch(items, files, explicitlyKept)
+      const savedRows = savedIds.flatMap((id) => rowByItem.get(id)?.id ?? [])
+      const skipped = new Map(duplicates.map(({ itemId, existing }) => [rowByItem.get(itemId)?.id, existing]))
+      setSavedRowIds((current) => new Set([...current, ...savedRows]))
+      const saved = new Set(savedRows)
+      setRows((current) => current.map((row) => {
+        const duplicate = skipped.get(row.id)
+        if (duplicate) return { ...row, selected: false, duplicateOf: { id: duplicate.id, title: displayTitle(duplicate), kind: 'exact' } }
+        return saved.has(row.id) ? { ...row, selected: false } : row
+      }))
+      setSaveStatus(`Saved ${savedIds.length} ${savedIds.length === 1 ? 'item' : 'items'} to your Inbox.${duplicates.length ? ` ${duplicates.length} already in the library and ready for duplicate review.` : ''}`)
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : 'The import was not saved. Your selected records are still available to retry.')
     } finally {
@@ -198,7 +234,10 @@ export function ImportPage({ data }: { data: LibraryData }) {
   }
 
   const validCount = rows.filter((row) => row.draft && row.errors.length === 0).length
+  const duplicateCount = rows.filter((row) => row.duplicateOf?.kind === 'exact' && !savedRowIds.has(row.id)).length
   const selectedCount = rows.filter((row) => row.selected && row.draft && row.errors.length === 0).length
+  const pageCount = Math.ceil(rows.length / rowsPerPage)
+  const pageRows = rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage)
   const fileAccept = kind === 'instagram' ? '.json,application/json' : kind === 'bookmarks' ? '.html,.htm,text/html' : '.pdf,.txt,application/pdf,text/plain'
 
   return (
@@ -211,7 +250,7 @@ export function ImportPage({ data }: { data: LibraryData }) {
         </div>
       </div>
 
-      <fieldset className="import-source-picker">
+      <fieldset className="import-source-picker" disabled={working || saving}>
         <legend>Choose what to import</legend>
         {sources.map((source) => (
           <label className={`import-source-option${kind === source.id ? ' import-source-option--active' : ''}`} key={source.id}>
@@ -227,14 +266,14 @@ export function ImportPage({ data }: { data: LibraryData }) {
             <label className="form-field"><span>Web link</span><input type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/..." required /></label>
             <label className="form-field"><span>Title <small>(optional)</small></span><input value={title} maxLength={300} onChange={(event) => setTitle(event.target.value)} placeholder="A name you'll recognize" /></label>
             <p className="form-explainer">Siftory will not open this link or fetch page information.</p>
-            <button className="primary-button" type="submit">Preview link</button>
+            <button className="primary-button" type="submit" disabled={working || saving}>Preview link</button>
           </form>
         ) : (
           <label className="import-file-picker">
             <span className="import-file-icon" aria-hidden="true">↑</span>
             <strong aria-live="polite">{working ? 'Reading locally…' : kind === 'instagram' ? 'Choose Instagram JSON export' : kind === 'bookmarks' ? 'Choose bookmarks HTML export' : 'Choose PDF or text files'}</strong>
             <small>{kind === 'file' ? `Up to ${formatBytes(MAX_SOURCE_FILE_BYTES)} per file and ${formatBytes(MAX_IMPORT_TOTAL_BYTES)} total.` : `One file up to ${formatBytes(MAX_IMPORT_DOCUMENT_BYTES)}.`}</small>
-            <input type="file" accept={fileAccept} multiple={kind === 'file'} onChange={(event) => void handleFiles(event)} disabled={working} />
+            <input type="file" accept={fileAccept} multiple={kind === 'file'} onChange={(event) => void handleFiles(event)} disabled={working || saving} />
           </label>
         )}
       </div>
@@ -246,14 +285,19 @@ export function ImportPage({ data }: { data: LibraryData }) {
         <section className="import-preview" aria-labelledby="import-preview-heading">
           <div className="import-preview-heading">
             <div><p className="library-eyebrow">REVIEW BEFORE SAVING</p><h2 id="import-preview-heading">Import preview</h2></div>
-            <span>{validCount} valid · {rows.length - validCount} need attention</span>
+            <span>{savedRowIds.size} saved · {validCount - savedRowIds.size - duplicateCount} ready · {duplicateCount} exact matches · {rows.length - validCount} need attention</span>
           </div>
-          {rows.length > MAX_CONFIRMED_ROWS && <p className="import-limit-note">Select up to {MAX_CONFIRMED_ROWS} valid records for this transaction. Unselected records will remain only in this preview.</p>}
+          {rows.length > MAX_CONFIRMED_ROWS && <p className="import-limit-note">Save up to {MAX_CONFIRMED_ROWS} records per batch. Remaining rows stay in this preview. If you leave or reload, reopen the same export to continue. Unsaved edits stay in this preview.</p>}
+          {pageCount > 1 && <nav className="processing-actions" aria-label="Import preview pages">
+            <button type="button" className="quiet-button" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous page</button>
+            <span role="status">Page {page + 1} of {pageCount} · {selectedCount} selected across pages</span>
+            <button type="button" className="quiet-button" disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}>Next page</button>
+          </nav>}
           <ul className="import-row-list">
-            {rows.map((row) => (
+            {pageRows.map((row) => (
               <li className={`import-row${row.errors.length ? ' import-row--invalid' : ''}`} key={row.id}>
                 <label className="import-row-select">
-                  <input type="checkbox" aria-label={`Select ${candidateTitle(row)}`} checked={row.selected} disabled={!row.draft || row.errors.length > 0 || saving || savedCount !== undefined || (selectedCount >= MAX_CONFIRMED_ROWS && !row.selected)} onChange={(event) => toggleRow(row.id, event.target.checked)} />
+                  <input type="checkbox" aria-label={`Select ${candidateTitle(row)}`} checked={row.selected} disabled={!row.draft || row.errors.length > 0 || saving || savedRowIds.has(row.id) || (selectedCount >= MAX_CONFIRMED_ROWS && !row.selected)} onChange={(event) => toggleRow(row.id, event.target.checked)} />
                   <span className="import-row-content">
                     {row.draft?.url && <span className="import-row-url">{row.draft.url}</span>}
                     {row.draft?.creatorName && <span>By {row.draft.creatorName}</span>}
@@ -261,8 +305,8 @@ export function ImportPage({ data }: { data: LibraryData }) {
                   </span>
                 </label>
                 {row.draft && <div className="import-row-edit">
-                  <label className="import-edit-field"><span>Title</span><input value={row.draft.title} maxLength={300} onChange={(event) => updateDraft(row.id, 'title', event.target.value)} disabled={saving || savedCount !== undefined || row.errors.length > 0} /></label>
-                  <label className="import-edit-field"><span>Description or caption <small> · editable; original source values are retained</small></span><textarea value={row.draft.description ?? ''} rows={2} onChange={(event) => updateDraft(row.id, 'description', event.target.value)} disabled={saving || savedCount !== undefined || row.errors.length > 0} /></label>
+                  <label className="import-edit-field"><span>Title</span><input value={row.draft.title} maxLength={300} onChange={(event) => updateDraft(row.id, 'title', event.target.value)} disabled={saving || savedRowIds.has(row.id) || row.errors.length > 0} /></label>
+                  <label className="import-edit-field"><span>Description or caption <small>· original source values are retained</small></span><textarea value={row.draft.description ?? ''} rows={2} onChange={(event) => updateDraft(row.id, 'description', event.target.value)} disabled={saving || savedRowIds.has(row.id) || row.errors.length > 0} /></label>
                 </div>}
                 {(row.errors.length > 0 || row.warnings.length > 0) && (
                   <div className={row.errors.length ? 'import-row-diagnostics import-row-diagnostics--error' : 'import-row-diagnostics'}>
@@ -271,20 +315,18 @@ export function ImportPage({ data }: { data: LibraryData }) {
                 )}
                 {row.duplicateOf?.kind === 'exact' && <p className="import-duplicate-note">This exact source identifier, URL, or file also exists as <strong>{row.duplicateOf.title}</strong>. It will be kept as a separate item only if selected.</p>}
                 {row.duplicateOf?.kind === 'possible' && <p className="import-duplicate-note">The title matches <strong>{row.duplicateOf.title}</strong>. Review the source details; title matches are never merged automatically.</p>}
-                {savedCount !== undefined && <p className={savedRowIds.includes(row.id) ? 'import-row-result import-row-result--saved' : 'import-row-result'}>{savedRowIds.includes(row.id) ? 'Saved to Inbox' : row.errors.length ? 'Skipped · needs attention' : 'Not imported'}</p>}
+                {savedRowIds.has(row.id) && <p className="import-row-result import-row-result--saved">Saved to Inbox</p>}
               </li>
             ))}
           </ul>
           {saveError && <p className="library-error" role="alert">{saveError}</p>}
-          {savedCount !== undefined ? (
-            <p className="import-success" role="status">Saved {savedCount} {savedCount === 1 ? 'item' : 'items'} to your Inbox. {rows.length - savedCount} other {rows.length - savedCount === 1 ? 'row was' : 'rows were'} not imported.</p>
-          ) : (
-            <div className="form-actions import-actions">
+          {saveStatus && <p className="import-success" role="status">{saveStatus}</p>}
+          <div className="form-actions import-actions">
               <button className="primary-button" type="button" onClick={() => void saveSelected()} disabled={saving || selectedCount === 0}>{saving ? 'Saving selected records…' : `Save ${selectedCount} to Inbox`}</button>
-              <button className="quiet-button" type="button" onClick={() => { setRows([]); setParseErrors([]); setSaveError(undefined); setSavedRowIds([]) }} disabled={saving}>Clear preview</button>
-            </div>
-          )}
-          <p className="import-atomicity-note">Selected records and source files save together in one local database transaction. If it fails, none of this batch is saved; you can retry after resolving the storage issue.</p>
+              {rows.some((row) => !row.selected && selectAutomatically(row)) && <button className="quiet-button" type="button" onClick={selectNextBatch} disabled={saving || selectedCount >= MAX_CONFIRMED_ROWS}>Select next batch</button>}
+              <button className="quiet-button" type="button" onClick={clearPreview} disabled={saving}>Clear preview</button>
+          </div>
+          <p className="import-atomicity-note">Selected records and source files save together. A storage error rolls back the current batch, leaving it available to retry.</p>
         </section>
       )}
     </section>

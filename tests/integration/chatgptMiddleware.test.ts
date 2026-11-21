@@ -61,16 +61,19 @@ describe('local ChatGPT routes', () => {
     expect(await connection.json()).toEqual({ authorizationUrl: 'https://auth.openai.com/api/accounts/authorize' })
 
     const status = await fetch(`${origin}/api/ai/status`, { headers: { 'X-Siftory-Request': '1', Cookie: cookie } })
-    expect(await status.json()).toEqual({ state: 'connected', email: 'person@example.com', models: [{ slug: 'gpt-6-sol', label: 'Example' }] })
-    expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: false })).status).toBe(400)
+    const connectionState = await status.json() as { state: string; connectionId: string; email: string; models: { slug: string; label: string }[] }
+    expect(connectionState).toMatchObject({ state: 'connected', connectionId: expect.any(String), email: 'person@example.com', models: [{ slug: 'gpt-6-sol', label: 'Example' }] })
+    expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: false, connectionId: connectionState.connectionId })).status).toBe(400)
     expect(generatePlanText).not.toHaveBeenCalled()
 
-    const analyzed = await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true, notes: 'private notes' })
+    const analyzed = await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true, connectionId: connectionState.connectionId, notes: 'private notes' })
     expect(await analyzed.json()).toEqual({ result })
     expect(generatePlanText).toHaveBeenCalledOnce()
     expect(generatePlanText).toHaveBeenCalledWith('synthetic-secret', 'gpt-6-sol', caption, expect.any(String), expect.any(AbortSignal))
+    expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true, connectionId: 'stale-connection' })).status).toBe(409)
+    expect(generatePlanText).toHaveBeenCalledOnce()
 
     expect(await (await post('disconnect', cookie)).json()).toEqual({ state: 'disconnected' })
-    expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true })).status).toBe(401)
+    expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true, connectionId: connectionState.connectionId })).status).toBe(401)
   })
 })

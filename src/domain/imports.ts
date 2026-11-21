@@ -5,6 +5,7 @@ export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024
 export const MAX_IMPORT_DOCUMENT_BYTES = 10 * 1024 * 1024
 export const MAX_IMPORT_TOTAL_BYTES = 50 * 1024 * 1024
 export const MAX_IMPORT_ROWS = 1000
+export const MAX_INSTAGRAM_IMPORT_ROWS = 5000
 export const MAX_CONFIRMED_ROWS = 100
 export const MAX_IMPORTED_TITLE_CHARS = 300
 export const MAX_IMPORTED_DESCRIPTION_CHARS = 20_000
@@ -17,6 +18,7 @@ export type ImportRow = {
   draft?: ItemDraft
   sourceMetadata?: Record<string, unknown>
   sourceRecordId?: string
+  importRecordKey?: string
   sourceFingerprint?: string
   sourceBlob?: Blob
   sourceFileName?: string
@@ -147,8 +149,8 @@ export function parseInstagramJson(text: string): ImportParseResult {
   if (!Array.isArray(payload)) {
     return { rows: [], errors: ['Expected an Instagram export containing a top-level array of saved records.'] }
   }
-  if (payload.length > MAX_IMPORT_ROWS) {
-    return { rows: [], errors: [`This export contains more than ${MAX_IMPORT_ROWS} records. Split it into smaller files and try again.`] }
+  if (payload.length > MAX_INSTAGRAM_IMPORT_ROWS) {
+    return { rows: [], errors: [`This export contains more than ${MAX_INSTAGRAM_IMPORT_ROWS.toLocaleString()} records. Split it into smaller JSON arrays and try again.`] }
   }
 
   const rows = payload.map((entry: unknown, index: number) => {
@@ -333,6 +335,7 @@ export function toImportedItems(rows: ImportRow[]): { items: SavedItem[]; files:
     const item = createSavedItem(row.draft, now)
     item.sourceMetadata = row.sourceMetadata
     item.sourceRecordId = row.sourceRecordId
+    item.importRecordKey = row.importRecordKey
     item.sourceFingerprint = row.sourceFingerprint
     if (row.sourceBlob && row.sourceFileName && row.sourceMediaType && row.sourceFingerprint) {
       item.sourceFileId = item.id

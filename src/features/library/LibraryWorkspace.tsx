@@ -26,6 +26,8 @@ import type { LibraryData } from './useLibraryData'
 import { routeHref } from '../../app/routes'
 import { ImportPage } from '../import/ImportPage'
 import { AnalysisPanel } from '../analysis/AnalysisPanel'
+import { AnalysisBatchReview } from '../analysis/AnalysisBatchReview'
+import { maxAnalysisBatchSize } from '../../domain/analysisQueue'
 import { ChatGptSettings } from '../analysis/ChatGptSettings'
 import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
 import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
@@ -155,6 +157,9 @@ function LibraryListing({
   const [showForm, setShowForm] = useState(false)
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [actionError, setActionError] = useState<string>()
+  const [selectingAnalysis, setSelectingAnalysis] = useState(false)
+  const [analysisSelection, setAnalysisSelection] = useState<string[]>([])
+  const [showAnalysisReview, setShowAnalysisReview] = useState(false)
 
   async function handleCreate(draft: ItemDraft) {
     const item = createSavedItem(draft)
@@ -208,6 +213,13 @@ function LibraryListing({
 
       {showForm && <ManualItemForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
 
+      {canAdd && <div className="analysis-selection-tools">
+        <button className="quiet-button" type="button" onClick={() => { setSelectingAnalysis((active) => !active); setAnalysisSelection([]); setShowAnalysisReview(false) }}>{selectingAnalysis ? 'Cancel AI selection' : 'Select items for AI analysis'}</button>
+        {selectingAnalysis && <span>Select up to {maxAnalysisBatchSize} items</span>}
+        {analysisSelection.length > 0 && <><span>{analysisSelection.length} of {maxAnalysisBatchSize} selected</span><button className="primary-button" type="button" disabled={showAnalysisReview} onClick={() => setShowAnalysisReview(true)}>Review selected text</button></>}
+      </div>}
+      {showAnalysisReview && analysisSelection.length > 0 && <AnalysisBatchReview itemIds={analysisSelection} data={data} onClose={() => setShowAnalysisReview(false)} />}
+
       <div className="library-toolbar">
         <label className="sort-field">
           <span className="visually-hidden">Sort items</span>
@@ -235,6 +247,7 @@ function LibraryListing({
         <ul className={`saved-items saved-items--${view}`}>
           {items.map((item) => (
             <li key={item.id}>
+              {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span>Select for AI analysis</span></label> : null}
               <SavedItemCard
                 item={item}
                 data={data}

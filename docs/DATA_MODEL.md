@@ -1,6 +1,6 @@
 ﻿# Siftory Data Model
 
-This document describes the conceptual model. The library, imports, jobs, extracted text, and individual analyses are implemented in `src/domain/` and IndexedDB schema version 4. Research sessions remain planned.
+This document describes the conceptual model. The library, imports, jobs, extracted text, individual analyses, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 5. Research sessions remain planned.
 
 ## SavedItem
 
@@ -26,6 +26,7 @@ Suggested fields:
 - `userNotes`: user-authored notes.
 - `sourceMetadata`: original source fields retained separately from editable title/description and user notes.
 - `sourceRecordId`: stable source-provided identifier where present, used for duplicate review.
+- `importRecordKey`: stable key derived from the exact Instagram JSON file fingerprint and row index, used to recognize an already imported record when reopening the same export.
 - `sourceFingerprint`: SHA-256 fingerprint for imported file bytes when applicable.
 - `sourceFileId`: optional link to a locally stored original PDF or text file.
 
@@ -52,6 +53,10 @@ Never overwrite original source text with extracted or corrected text.
 Structured AI-generated understanding stored separately in the `analyses` object store. The current record keeps `savedItemId`, analyzed-text fingerprint, source kind, requested model, analysis version, time, and result. Results include a summary, key points, suggested categories, and mentioned entities with source quotes, plus literal links from the analyzed text.
 
 The result key combines item ID, the exact text fingerprint, model, and analysis version. This lets Siftory reuse an unchanged result. Item deletion also deletes its analysis records. Applying an edited category adds a normal item/category association and preserves the generated suggestion.
+
+## AnalysisJob (implemented)
+
+Stored in the `analysisJobs` object store and keyed by the same item, analyzed-text fingerprint, model, and analysis version as its result. Jobs retain status, attempt count, update time, and a time-limited active attempt identifier. They do not store a copy of source text or OAuth credentials. Claim and completion operations verify the current source text in IndexedDB. Completion writes the validated `Analysis` and job status together. Jobs are sequential and require the app and local server to remain open; an expired attempt becomes Needs Attention for review and explicit retry.
 
 Fields proposed for broader coverage and future versions:
 - `id`

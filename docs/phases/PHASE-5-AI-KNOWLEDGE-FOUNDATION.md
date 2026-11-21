@@ -10,7 +10,7 @@ The Phase 0 audit is recorded. The Phase 5 kickoff verified the core Phase 1–4
 
 - **Phase 1:** keyboard focus and navigation, dark and light theme switching, and layout width. Search now opens the library after entering a query, so tabbing through the input keeps the current screen open.
 - **Phase 2:** manual records, moving them to All Saved, applying a category, keyword search, and persistence across reload.
-- **Phase 3:** Instagram preview and duplicate handling, a malformed row, bookmark folder provenance and unsafe-link rejection, manual URL import, and PDF/text import. New automated fixtures cover parser behavior, v1 schema upgrade, retention of original files, and rollback on a failed batch write. Current limits are 10 MiB per JSON/bookmark file, 1,000 preview rows, and 100 selected rows per transaction.
+- **Phase 3 and 5:** Instagram preview and duplicate handling, bookmark provenance and unsafe-link rejection, manual URL import, and PDF/text import. Instagram JSON now supports 5,000 rows (50 per preview page, 100 per transaction); bookmark HTML remains at 1,000 rows. JSON/bookmark files remain capped at 10 MiB.
 - **Phase 4:** queue persistence after reload, skip and requeue, text extraction and viewing the result, and downloading an original PDF. Tests also cover invalid UTF-8 and recovery from expired leases.
 
 The browser review used desktop Chrome at both widths and included a visual inspection of import previews in desktop dark and mobile light layouts. Screen reader testing, physical mobile testing, and a full accessibility review remain release work. This baseline preceded the in-app AI analysis flow documented below.
@@ -95,11 +95,13 @@ The account holder verified the terminal check live. `gpt-6-sol` returned a comp
 
 1. Open the same Siftory address you use for your library with `npm run dev` or `npm run preview`. IndexedDB is scoped to the exact browser address and port.
 2. Open **Settings**, choose **Connect ChatGPT**, and use **Continue with ChatGPT** to sign in and grant plan access. Return to Siftory to see the connection and available models.
-3. Open a saved Instagram item with a caption, or extract an imported `.txt` file in **Processing** first. Open **AI analysis**, review the exact text, choose a model, and confirm before selecting **Analyze with ChatGPT**.
+3. Open a saved Instagram item with a caption, or extract an imported `.txt` file in **Processing** first. On its detail page, review the exact text, choose a model, and confirm before starting. For a batch, select items in **Inbox** or **All saved**, review each exact text, and confirm once for that selected batch. The **Processing queue** shows queued and completed AI jobs, and lets you review, retry, or skip work.
 4. The analysis shows the summary, key points, mentioned links and entities, suggested categories, and matching source quotes. Edit a category name before applying it. Analyze only text you're comfortable sending to OpenAI. Each request may use plan allowance or enabled credits.
 
 The connection lives in local server memory until expiration, disconnect, or server restart. Settings runs a fresh authorization when reconnecting. Analysis uses at most 16,000 characters per request. Results save in local IndexedDB and are reused for the same item, analyzed text, model, and analysis version. Deleting the item removes its results.
 
 The in-app sign-in reached the model listing but hit the smaller limit for text responses. The model catalog now has its own 8 MiB limit. A regression test verifies that a catalog above the text response limit loads and only selectable models reach Settings.
 
-On 2026-11-22, the account holder reported that the in-app flow works after the model list size fix. Build, lint, and 49 automated tests passed on that implementation. Automated and Chrome tests use simulated provider results and synthetic source text. Persistent account registrations and credential renewal, durable analysis jobs and batch actions, large-export handling, and expanded media inputs remain open.
+On 2026-11-22, the account holder reported that the in-app flow works after the model list size fix. The follow-up adds persistent local jobs, batch consent and review, session-bound requests, and resumable Instagram import batches. Build and lint pass; all 55 automated tests pass. Headless Chrome verified a 160-row multi-batch import, duplicate recognition after reload, keyboard selection, a mocked two-item analysis, and a 390 px layout without overflow. A synthetic 5,000-row parser test records elapsed time. These browser/test checks use mocked provider responses and synthetic source text. Persistent account registrations, credential renewal, broader media/transcript inputs, and actual browser storage quota behavior for a full-size export remain open.
+
+The next work is documented in the [Phase 5 follow-up plan](PHASE-5-BATCH-ANALYSIS.md).

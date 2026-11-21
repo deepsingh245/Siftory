@@ -53,6 +53,7 @@ export type SavedItem = {
   tagIds: string[]
   sourceMetadata?: Record<string, unknown>
   sourceRecordId?: string
+  importRecordKey?: string
   sourceFingerprint?: string
   sourceFileId?: string
 }

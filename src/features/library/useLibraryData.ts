@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import type { Analysis } from '../../domain/analysis'
+import type { AnalysisJob, AnalysisReview } from '../../domain/analysisQueue'
 import type { ExtractedContent, ProcessingCapability, ProcessingJob } from '../../domain/processing'
 import { getProcessingCapability } from '../../domain/processing'
 import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
 import { queueProcessingItem, retryProcessingJob, runProcessingJob, runQueuedProcessing } from '../processing/processingService'
+import { prepareAnalysisReview, queueReviewedAnalysis, runReviewedAnalysis } from '../analysis/analysisQueueService'
+import type { AnalysisRun } from '../analysis/analysisQueueService'
+import { chatgpt } from '../analysis/chatgptClient'
 
 const repository = createLibraryRepository(undefined, () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('siftory:database-blocked'))
@@ -16,6 +20,9 @@ export type LibraryData = {
   categories: Category[]
   tags: Tag[]
   jobs: ProcessingJob[]
+  analysisJobs: AnalysisJob[]
+  analysisRunning: boolean
+  analysisMessage?: string
   loading: boolean
   error: string | undefined
   refresh: () => Promise<void>
@@ -25,11 +32,14 @@ export type LibraryData = {
   getProcessingCapability: (item: SavedItem) => Promise<ProcessingCapability>
   getExtractedContent: (id: string) => Promise<ExtractedContent | undefined>
   getAnalyses: (id: string) => Promise<Analysis[]>
+  prepareAnalysisReview: (ids: string[], model: string, jobs?: AnalysisJob[]) => Promise<AnalysisReview>
   actions: {
     saveItem: (item: SavedItem) => Promise<void>
-    saveAnalysis: (analysis: Analysis) => Promise<void>
     applySuggestedCategory: (id: string, name: string) => Promise<void>
-    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => Promise<void>
+    saveImportedBatch: ReturnType<typeof createLibraryRepository>['saveImportedBatch']
+    queueAnalysis: (review: AnalysisReview) => Promise<number>
+    startAnalysis: (review: AnalysisReview, connectionId: string, enqueue?: boolean) => Promise<AnalysisRun>
+    setAnalysisJobQueueState: (id: string, status: 'queued' | 'skipped') => Promise<void>
     queueProcessing: (savedItemId: string) => Promise<ProcessingJob>
     processNow: (savedItemId: string) => Promise<ProcessingJob | undefined>
     processQueue: () => Promise<ProcessingJob[]>
@@ -52,23 +62,29 @@ export function useLibraryData(): LibraryData {
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [jobs, setJobs] = useState<ProcessingJob[]>([])
+  const [analysisJobs, setAnalysisJobs] = useState<AnalysisJob[]>([])
+  const [analysisRunning, setAnalysisRunning] = useState(false)
+  const [analysisMessage, setAnalysisMessage] = useState<string>()
+  const analysisRunActive = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>()
 
   const refresh = useCallback(async () => {
     try {
-      const [nextItems, nextCollections, nextCategories, nextTags, nextJobs] = await Promise.all([
+      const [nextItems, nextCollections, nextCategories, nextTags, nextJobs, nextAnalysisJobs] = await Promise.all([
         repository.getItems(),
         repository.getCollections(),
         repository.getCategories(),
         repository.getTags(),
         repository.getProcessingJobs(),
+        repository.getAnalysisJobs(),
       ])
       setItems(nextItems)
       setCollections(nextCollections)
       setCategories(nextCategories)
       setTags(nextTags)
       setJobs(nextJobs)
+      setAnalysisJobs(nextAnalysisJobs)
       setError(undefined)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The local library could not be opened.')
@@ -76,6 +92,8 @@ export function useLibraryData(): LibraryData {
       setLoading(false)
     }
   }, [])
+
+  const refreshAnalysisJobs = useCallback(async () => { setAnalysisJobs(await repository.getAnalysisJobs()) }, [])
 
   useEffect(() => {
     const showBlockedMessage = () => {
@@ -85,8 +103,9 @@ export function useLibraryData(): LibraryData {
     window.addEventListener('siftory:database-blocked', showBlockedMessage)
     const recoverExpired = async () => {
       try {
-        const recovered = await repository.recoverExpiredProcessingJobs()
+        const [recovered] = await Promise.all([repository.recoverExpiredProcessingJobs(), repository.recoverExpiredAnalysisJobs()])
         if (recovered.length) await refresh()
+        else await refreshAnalysisJobs()
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Interrupted processing jobs could not be recovered.')
       }
@@ -108,7 +127,7 @@ export function useLibraryData(): LibraryData {
       window.clearInterval(recoveryTimer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [refresh])
+  }, [refresh, refreshAnalysisJobs])
 
   const perform = useCallback(async <T,>(task: () => Promise<T>) => {
     const result = await task()
@@ -120,6 +139,31 @@ export function useLibraryData(): LibraryData {
   const getSourceFile = useCallback((savedItemId: string) => repository.getSourceFile(savedItemId), [])
   const getExtractedContent = useCallback((id: string) => repository.getExtractedContent(id), [])
   const getAnalyses = useCallback((id: string) => repository.getAnalyses(id), [])
+  const reviewAnalysis = useCallback((ids: string[], model: string, queuedJobs?: AnalysisJob[]) => prepareAnalysisReview(repository, ids, model, queuedJobs), [])
+  const queueAnalysis = useCallback(async (review: AnalysisReview) => {
+    const count = await queueReviewedAnalysis(repository, review)
+    await refreshAnalysisJobs()
+    return count
+  }, [refreshAnalysisJobs])
+  const startAnalysis = useCallback(async (review: AnalysisReview, connectionId: string, enqueue = false) => {
+    if (analysisRunActive.current) throw new Error('Analysis is already running. Review the queue when it finishes.')
+    analysisRunActive.current = true
+    setAnalysisRunning(true)
+    setAnalysisMessage(undefined)
+    try {
+      if (enqueue) await queueAnalysis(review)
+      const result = await runReviewedAnalysis(repository, review, connectionId, chatgpt, refreshAnalysisJobs)
+      setAnalysisMessage(result.message ?? `${result.completed.length} ${result.completed.length === 1 ? 'analysis' : 'analyses'} saved.`)
+      return result
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'The analysis queue stopped.'
+      setAnalysisMessage(message)
+      throw cause
+    } finally {
+      analysisRunActive.current = false
+      setAnalysisRunning(false)
+    }
+  }, [queueAnalysis, refreshAnalysisJobs])
   const getCapability = useCallback(async (item: SavedItem) => {
     if (item.sourceType !== 'text' || item.contentType !== 'text' || !item.sourceFileId) {
       return getProcessingCapability(item, undefined, [])
@@ -136,9 +180,14 @@ export function useLibraryData(): LibraryData {
   }, [])
   const actions = useMemo(() => ({
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
-    saveAnalysis: (analysis: Analysis) => repository.saveAnalysis(analysis),
     applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),
-    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => perform(() => repository.saveImportedBatch(items, files)),
+    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[], duplicates?: ReadonlySet<string>) => perform(() => repository.saveImportedBatch(items, files, duplicates)),
+    queueAnalysis,
+    startAnalysis,
+    setAnalysisJobQueueState: async (id: string, status: 'queued' | 'skipped') => {
+      await repository.setAnalysisJobQueueState(id, status)
+      await refreshAnalysisJobs()
+    },
     queueProcessing: (savedItemId: string) => perform(() => queueProcessingItem(repository, savedItemId)),
     processNow: async (savedItemId: string) => {
       const job = await queueProcessingItem(repository, savedItemId)
@@ -163,7 +212,7 @@ export function useLibraryData(): LibraryData {
     deleteCategory: (id: string) => perform(() => repository.deleteCategory(id)),
     saveTag: (tag: Tag) => perform(() => repository.saveTag(tag)),
     deleteTag: (id: string) => perform(() => repository.deleteTag(id)),
-  }), [perform, refresh])
+  }), [perform, refresh, queueAnalysis, startAnalysis, refreshAnalysisJobs])
 
-  return { items, collections, categories, tags, jobs, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, getProcessingCapability: getCapability, actions }
+  return { items, collections, categories, tags, jobs, analysisJobs, analysisRunning, analysisMessage, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, prepareAnalysisReview: reviewAnalysis, getProcessingCapability: getCapability, actions }
 }

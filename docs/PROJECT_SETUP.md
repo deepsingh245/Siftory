@@ -2,7 +2,7 @@
 
 ## Current state
 
-Audited on 2026-11-20 and updated for Phase 5 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, imports, a local text extraction queue, and individual AI analysis for saved Instagram captions and extracted text through an optional ChatGPT connection. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20 and updated for Phase 5 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, resumable imports, a local text extraction queue, and individual or batch AI analysis for saved Instagram captions and extracted text through an optional ChatGPT connection. The starter pack supplied product and implementation guidance but no application source.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -17,7 +17,7 @@ The repository was initialized with Git before this task. No remote push or comm
 - Product code is organized under `src/app`, `src/domain`, `src/features/library`, and `src/infrastructure/persistence`.
 - `tests/unit` and `tests/integration` cover domain rules and the IndexedDB repository. The test runner is Vitest.
 - `src/domain/imports.ts` parses and validates import candidates locally; `src/features/import/` provides preview, duplicate review, and explicit confirmation.
-- IndexedDB schema version 4 stores the local library, source files, processing jobs, extracted text, and versioned AI results.
+- IndexedDB schema version 5 stores the local library, source files, processing and analysis jobs, extracted text, and versioned AI results.
 
 ## Phase 0 audit results
 
@@ -65,6 +65,14 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 
 No existing application logic was available to reuse during the Phase 0 audit. Phase 2 confirmed `idb` over IndexedDB and native hash routes without a routing dependency. The current Phase 5 plan prioritizes an authorized ChatGPT-plan AI connection and analysis; content coverage and semantic search remain later work.
 
+## Phase 5 batch and import follow-up
+
+- Instagram JSON accepts up to 5,000 rows from files up to 10 MiB. The preview renders 50 rows at a time, retains edits and selections across 100-row save transactions, and recognizes rows from the same export after reopening it.
+- The analysis queue stores item/model/version/attempt state locally but no copy of source text or ChatGPT credentials. It runs sequentially while the app and local server are open. Before sending, the user reviews the exact text and confirms for the selected account and model.
+- A session change, plan limit, or interrupted attempt pauses work for a fresh review or explicit retry. Results and job completion are persisted together. Deleting an item also deletes its analysis jobs and results.
+- Build, lint, all 55 automated tests, and a synthetic Chrome desktop/mobile flow passed on 2026-11-22. See `docs/phases/PHASE-5-BATCH-ANALYSIS.md` for the measured parser run and browser-check scope.
+- ChatGPT credentials remain in local server memory and are lost on restart or expiration. Persistent account registration and broader Instagram/YouTube transcript inputs remain future work.
+
 ## Repository layout
 
 ```text
@@ -105,4 +113,4 @@ The Vite + React + TypeScript stack, npm, IndexedDB through `idb`, Vitest with f
 
 ## Next milestone
 
-The account holder confirmed the in-app flow. The next milestone is durable batch analysis and incremental import. See the [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md) for steps and pending work.
+The Phase 5 batch and import follow-up is implemented. The next milestone is Phase 6 source coverage for user-provided Instagram content and permitted YouTube transcript inputs. See the [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md) and its [batch follow-up](phases/PHASE-5-BATCH-ANALYSIS.md) for boundaries and verification.

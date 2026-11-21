@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash navigation under `src/app/`. Phase 3 adds local import adapters, preview UI, and original PDF/text storage. Phase 4 adds processing jobs, queue UI, and local `.txt` extraction. Phase 5 adds the first ChatGPT connection and individual text analysis. PDF extraction, broader source access, backup/restore, and research remain future work.
+This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash navigation under `src/app/`. Phase 3 adds local import adapters, preview UI, and original PDF/text storage. Phase 4 adds processing jobs, queue UI, and local `.txt` extraction. Phase 5 adds the session-only ChatGPT connection, validated individual and batch analysis, persistent analysis jobs/results, and resumable Instagram import previews. PDF extraction, broader source access, backup/restore, and research remain future work.
 
 ## Principles
 
@@ -30,7 +30,7 @@ Use cases and domain services:
 - Export and restore data.
 
 ### Persistence
-Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. Schema version 3 stores saved items, collections, categories, tags, source-file Blobs, processing jobs, and extracted content. Earlier records and relationships are preserved during upgrade. Imported items and original files are written in one transaction; deleting an item also deletes its source file, jobs, and extracted text. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
+Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. Schema version 5 stores saved items, collections, categories, tags, source-file Blobs, processing jobs, extracted content, analyses, and analysis jobs. Earlier records and relationships are preserved during upgrade. Imported items and original files are written in one transaction; each import transaction is capped at 100 selected records. Deleting an item also deletes its source file, jobs, extracted text, and analyses. Analysis claims are serialized in IndexedDB; completion checks the attempt lease and exact current source text before writing a result and completed status together. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
 
 ### Ingestion adapters
 One adapter per supported source format:
@@ -58,7 +58,7 @@ Do not bind domain logic directly to a vendor SDK.
 
 The Vite dev and preview servers host the AI routes on the app origin. `server/chatgpt-middleware.mjs` checks loopback access and the app origin for mutations. An HTTP-only session cookie identifies the browser, and the server holds OAuth credentials in memory. `server/chatgpt-plan.mjs` uses state and PKCE for the loopback callback, verifies the ID token and separate plan-use grant, and calls OpenAI's public Responses API. The terminal diagnostic uses the same provider module.
 
-After explicit confirmation, item detail sends only the displayed caption or extracted text and the model choice. The server checks size and scope, requests a streamed response, and validates its structure and quoted evidence. The browser saves the result to IndexedDB schema version 4. Quoted evidence is checked against the input text, and the user reviews generated interpretations and category suggestions.
+After explicit confirmation, item detail or the batch review sends only the displayed caption or extracted text and the selected model. A batch review shows the exact text before confirmation and runs one request at a time while the app and local server are open. The browser binds consent to an opaque connection ID; a changed or expired connection requires a new review. The server checks size and scope, requests a streamed response, and validates its structure and quoted evidence. The browser saves results and durable queue records in IndexedDB schema version 5. Quoted evidence is checked against the input text, and the user reviews generated interpretations and category suggestions.
 
 The current session expires or ends on disconnect or server restart. Account persistence and credential renewal are pending. The library and local extraction stay available with AI disconnected.
 

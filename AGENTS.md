@@ -12,7 +12,7 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md` for product intent. Read the r
 
 ## Current repository status
 
-This repository contains the Siftory shell, local library, Instagram/bookmark/URL/PDF/text imports, and local `.txt` extraction on Vite + React + TypeScript. Phase 5 has a session-only ChatGPT connection in Settings and consented analysis of individual captions or extracted text. The account holder confirmed the in-app flow works. Persistent accounts, durable analysis jobs, and large exports remain open. Inspect the live code and scripts before choosing additional libraries or imposing folders.
+This repository contains the Siftory shell, local library, Instagram/bookmark/URL/PDF/text imports, and local `.txt` extraction on Vite + React + TypeScript. Phase 5 has a session-only ChatGPT connection, explicit per-item and batch analysis with persistent jobs, and resumable Instagram import previews up to 5,000 rows (100 saves per transaction). The account holder confirmed the in-app flow works. Persistent accounts and broader media/transcript inputs remain open. Inspect the live code and scripts before choosing additional libraries or imposing folders.
 
 ## Product and privacy constraints
 

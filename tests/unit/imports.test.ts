@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_IMPORTED_DESCRIPTION_CHARS, MAX_IMPORT_ROWS, parseInstagramJson, parseManualUrl, parseSourceFile, toImportedItems } from '../../src/domain/imports'
+import { MAX_IMPORTED_DESCRIPTION_CHARS, MAX_INSTAGRAM_IMPORT_ROWS, parseInstagramJson, parseManualUrl, parseSourceFile, toImportedItems } from '../../src/domain/imports'
 
 describe('Instagram export import', () => {
+  it('parses a synthetic export above the former 1,000-row limit', () => {
+    const payload = JSON.stringify(Array.from({ length: 5_000 }, (_, index) => ({ caption: `Synthetic saved note ${index}` })))
+    const start = performance.now()
+    const result = parseInstagramJson(payload)
+    const elapsed = performance.now() - start
+    expect(result.errors).toEqual([])
+    expect(result.rows).toHaveLength(5_000)
+    console.info(`Synthetic Instagram import: 5,000 rows parsed in ${Math.round(elapsed)} ms (${(payload.length / 1024).toFixed(1)} KiB).`)
+  })
+
   it('retains the original row and accepts nested metadata without inferring the media type', () => {
     const original = {
       timestamp: 1_700_000_000,
@@ -37,7 +47,7 @@ describe('Instagram export import', () => {
     expect(row.warnings).toContainEqual(expect.stringContaining('description preview'))
   })
 
-  it.each(['{', '{}', JSON.stringify(Array(MAX_IMPORT_ROWS + 1).fill({}))])('rejects an unreadable or out of bounds export', (input) => {
+  it.each(['{', '{}', JSON.stringify(Array(MAX_INSTAGRAM_IMPORT_ROWS + 1).fill({}))])('rejects an unreadable or out of bounds export', (input) => {
     expect(parseInstagramJson(input)).toMatchObject({ rows: [], errors: [expect.any(String)] })
   })
 })

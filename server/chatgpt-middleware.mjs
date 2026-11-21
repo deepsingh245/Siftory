@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { maxAnalysisTextLength, validateAnalysis } from '../src/domain/analysis.ts'
 import { authorize, CheckError, exchangeCode, generatePlanText, getHostId, listModels, planPermission, revoke, verifyIdentity } from './chatgpt-plan.mjs'
 
@@ -49,7 +49,7 @@ async function readBody(request) {
 function browserStatus(session) {
   if (!session) return { state: 'disconnected' }
   if (session.state === 'connected') {
-    return { state: 'connected', email: session.identity.email, models: session.models }
+    return { state: 'connected', connectionId: session.connectionId, email: session.identity.email, models: session.models }
   }
   return { state: session.state, message: session.message }
 }
@@ -99,7 +99,7 @@ export function createChatGptMiddleware(scheme = 'http') {
         if (!models.length) throw failure(502, 'OpenAI did not list models for this account.')
         if (session.abort.signal.aborted) throw failure(409, 'Sign-in was cancelled.')
         Object.assign(session, {
-          state: 'connected', identity, models, clientId: attempt.clientId,
+          state: 'connected', connectionId: randomUUID(), identity, models, clientId: attempt.clientId,
           accessToken: tokens.access_token, refreshToken: tokens.refresh_token,
         })
         expireAfter(session, Math.min(3600, tokens.expires_in > 0 ? tokens.expires_in : 3600) * 1000)
@@ -166,6 +166,7 @@ export function createChatGptMiddleware(scheme = 'http') {
       if (path !== `${apiPath}/analyze`) throw failure(404, 'Unknown AI action.')
       if (session?.state !== 'connected') throw failure(401, 'Connect your ChatGPT account in Settings to analyze this item.')
       const body = await readBody(request)
+      if (body?.connectionId !== session.connectionId) throw failure(409, 'The ChatGPT connection changed. Review the selected text and confirm again.')
       if (body?.consent !== true || typeof body.text !== 'string' || !body.text.trim() || body.text.length > maxAnalysisTextLength ||
         !session.models.some(({ slug }) => slug === body.model)) throw failure(400, 'Choose a model and confirm the selected text before analyzing it.')
       if (session.abort.signal.aborted) throw failure(401, 'Your ChatGPT session has ended. Connect again in Settings.')

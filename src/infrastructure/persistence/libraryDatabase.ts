@@ -3,9 +3,10 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
 import type { Analysis } from '../../domain/analysis'
+import type { AnalysisJob, AnalysisJobStatus } from '../../domain/analysisQueue'
 
 export const databaseName = 'siftory-library'
-export const databaseVersion = 4
+export const databaseVersion = 5
 
 export interface LibraryDatabase extends DBSchema {
   savedItems: {
@@ -16,6 +17,9 @@ export interface LibraryDatabase extends DBSchema {
       'by-url': string
       'by-updated': string
       'by-last-viewed': string
+      'by-source-record': [string, string]
+      'by-fingerprint': string
+      'by-import-key': string
     }
   }
   collections: {
@@ -63,6 +67,11 @@ export interface LibraryDatabase extends DBSchema {
     value: Analysis
     indexes: { 'by-item': string }
   }
+  analysisJobs: {
+    key: string
+    value: AnalysisJob
+    indexes: { 'by-item': string; 'by-status': AnalysisJobStatus }
+  }
 }
 
 export type LibraryDatabaseConnection = IDBPDatabase<LibraryDatabase>
@@ -73,7 +82,7 @@ export function openLibraryDatabase(name = databaseName, onBlocked?: () => void)
   }
 
   return openDB<LibraryDatabase>(name, databaseVersion, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       if (oldVersion < 1) {
         const items = db.createObjectStore('savedItems', { keyPath: 'id' })
         items.createIndex('by-status', 'status')
@@ -108,6 +117,15 @@ export function openLibraryDatabase(name = databaseName, onBlocked?: () => void)
         extracted.createIndex('by-created', 'extractedAt')
       }
       if (oldVersion < 4) db.createObjectStore('analyses', { keyPath: 'id' }).createIndex('by-item', 'savedItemId')
+      if (oldVersion < 5) {
+        const items = transaction.objectStore('savedItems')
+        items.createIndex('by-source-record', ['sourceType', 'sourceRecordId'])
+        items.createIndex('by-fingerprint', 'sourceFingerprint')
+        items.createIndex('by-import-key', 'importRecordKey')
+        const jobs = db.createObjectStore('analysisJobs', { keyPath: 'id' })
+        jobs.createIndex('by-item', 'savedItemId')
+        jobs.createIndex('by-status', 'status')
+      }
     },
     blocked() {
       onBlocked?.()
