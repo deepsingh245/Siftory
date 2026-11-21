@@ -1,6 +1,6 @@
-# Siftory Data Model
+﻿# Siftory Data Model
 
-This document describes the conceptual model. Phases 2 and 3 implement core library/import entities in `src/domain/` and store them in IndexedDB schema version 2. Extraction, analysis, jobs, and research remain future entities.
+This document describes the conceptual model. Phases 2–4 implement library, import, job, and extracted text entities in `src/domain/` and IndexedDB schema version 3. Analysis and research remain future entities.
 
 ## SavedItem
 
@@ -39,22 +39,11 @@ Stores the original user-selected PDF or plain-text file locally for later proce
 
 Removing a saved item removes its associated source file in the same transaction.
 
-## ExtractedContent
+## ExtractedContent (implemented for local text extraction)
 
 Stores machine-extracted source content separately from the saved record.
 
-Suggested fields:
-- `id`
-- `savedItemId`
-- `kind`: transcript, article_text, caption, OCR, metadata, document_text.
-- `text`
-- `language`
-- `provider`
-- `extractedAt`
-- `sourceRange`: optional page/time/range information.
-- `confidence`: optional provider-supported confidence.
-- `status`
-- `error`
+Implemented fields: `id`, `savedItemId`, `kind` (`document_text`), `text`, `provider` (`local-text-file`), `processingVersion`, `sourceFingerprint`, `sourceFileName`, and `extractedAt`.
 
 Never overwrite original source text with extracted or corrected text.
 
@@ -113,23 +102,27 @@ User-defined grouping:
 
 In the current schema, a saved item stores ID lists for its collections, categories, and tags. Removing a label clears its ID from affected saved items in the same IndexedDB transaction.
 
-## ProcessingJob
+## ProcessingJob (implemented)
 
 - `id`
 - `savedItemId`
 - `jobType`
+- `jobKey` and optional unique `activeKey`
 - `status`
 - `stage`
 - `createdAt`
 - `updatedAt`
 - `attemptCount`
+- `attempts` and `events`
 - `processingVersion`
+- `sourceFingerprint`
+- optional `leaseExpiresAt` and `resultId`
 - `errorCode`
 - `errorMessage`
 - `startedAt`
 - `completedAt`
 
-Statuses: Pending, Queued, Extracting, Transcribing, Analysing, Indexing, Completed, Failed, Needs Attention, Skipped.
+Statuses: Queued, Extracting, Completed, Failed, Needs Attention, Skipped. The Phase 4 runner processes only local `.txt` files, sequentially while the app is open.
 
 ## ResearchSession
 

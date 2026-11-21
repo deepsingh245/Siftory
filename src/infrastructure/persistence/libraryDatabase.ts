@@ -1,9 +1,10 @@
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
+import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
 
 export const databaseName = 'siftory-library'
-export const databaseVersion = 2
+export const databaseVersion = 3
 
 export interface LibraryDatabase extends DBSchema {
   savedItems: {
@@ -36,6 +37,26 @@ export interface LibraryDatabase extends DBSchema {
     value: SourceFileRecord
     indexes: { 'by-created': string }
   }
+  processingJobs: {
+    key: string
+    value: ProcessingJob
+    indexes: {
+      'by-item': string
+      'by-status': ProcessingStatus
+      'by-job-key': string
+      'by-active-key': string
+      'by-created': string
+    }
+  }
+  extractedContent: {
+    key: string
+    value: ExtractedContent
+    indexes: {
+      'by-item': string
+        'by-source-key': IDBValidKey
+      'by-created': string
+    }
+  }
 }
 
 export type LibraryDatabaseConnection = IDBPDatabase<LibraryDatabase>
@@ -66,6 +87,19 @@ export function openLibraryDatabase(name = databaseName, onBlocked?: () => void)
       if (oldVersion < 2) {
         const files = db.createObjectStore('sourceFiles', { keyPath: 'savedItemId' })
         files.createIndex('by-created', 'createdAt')
+      }
+      if (oldVersion < 3) {
+        const jobs = db.createObjectStore('processingJobs', { keyPath: 'id' })
+        jobs.createIndex('by-item', 'savedItemId')
+        jobs.createIndex('by-status', 'status')
+        jobs.createIndex('by-job-key', 'jobKey')
+        jobs.createIndex('by-active-key', 'activeKey', { unique: true })
+        jobs.createIndex('by-created', 'createdAt')
+
+        const extracted = db.createObjectStore('extractedContent', { keyPath: 'id' })
+        extracted.createIndex('by-item', 'savedItemId')
+        extracted.createIndex('by-source-key', ['savedItemId', 'sourceFingerprint', 'processingVersion'])
+        extracted.createIndex('by-created', 'extractedAt')
       }
     },
     blocked() {

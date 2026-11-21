@@ -1,5 +1,7 @@
 import type { IDBPDatabase } from 'idb'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
+import { MAX_PROCESSING_SOURCE_BYTES } from '../../domain/processing'
+import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
 import { databaseName } from './libraryDatabase'
 import { openLibraryDatabase } from './libraryDatabase'
 import type { LibraryDatabase } from './libraryDatabase'
@@ -64,6 +66,249 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       return (await connection()).get('sourceFiles', savedItemId)
     },
 
+    async getProcessingJobs() {
+      return (await connection()).getAllFromIndex('processingJobs', 'by-created')
+    },
+
+    async getProcessingJobsForItem(savedItemId: string) {
+      return (await connection()).getAllFromIndex('processingJobs', 'by-item', savedItemId)
+    },
+
+    async getProcessingJob(id: string) {
+      return (await connection()).get('processingJobs', id)
+    },
+
+    async getExtractedContent(id: string) {
+      return (await connection()).get('extractedContent', id)
+    },
+
+    async getExtractedContentForSource(savedItemId: string, fingerprint: string, version: string) {
+      return (await connection()).getFromIndex('extractedContent', 'by-source-key', [savedItemId, fingerprint, version])
+    },
+
+    async enqueueProcessingJob(job: ProcessingJob) {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent'], 'readwrite')
+      try {
+        const item = await tx.objectStore('savedItems').get(job.savedItemId)
+        if (!item || !item.sourceFileId) throw new Error('This saved item no longer has an imported source file.')
+        const file = await tx.objectStore('sourceFiles').get(item.sourceFileId)
+        if (!file) throw new Error('The original local source file is missing.')
+        if (item.sourceType !== 'text' || item.contentType !== 'text' || !file.fileName.toLowerCase().endsWith('.txt') || file.mediaType !== 'text/plain') {
+          throw new Error('Only imported local .txt files can be added to the processing queue.')
+        }
+        if (file.size <= 0 || file.size > MAX_PROCESSING_SOURCE_BYTES || file.blob.size !== file.size) {
+          throw new Error('The text file is empty, changed, or above the 20 MiB processing limit.')
+        }
+        if (file.sha256 !== job.sourceFingerprint || item.sourceFingerprint !== job.sourceFingerprint) {
+          throw new Error('The source file fingerprint no longer matches this saved item. Review the original file before processing.')
+        }
+
+        const jobs = tx.objectStore('processingJobs')
+        const active = await jobs.index('by-active-key').get(job.jobKey)
+        if (active) {
+          await tx.done
+          return active
+        }
+
+        const previous = (await jobs.index('by-job-key').getAll(job.jobKey))
+          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        const completed = previous.find((candidate) => candidate.status === 'completed' && candidate.resultId)
+        if (completed?.resultId && await tx.objectStore('extractedContent').get(completed.resultId)) {
+          await tx.done
+          return completed
+        }
+
+        const retryable = previous.find((candidate) => ['failed', 'needs-attention', 'skipped'].includes(candidate.status))
+        if (retryable) {
+          const at = new Date().toISOString()
+          const next: ProcessingJob = {
+            ...retryable,
+            status: 'queued',
+            activeKey: retryable.jobKey,
+            stage: undefined,
+            queuedAt: at,
+            updatedAt: at,
+            leaseExpiresAt: undefined,
+            resultId: undefined,
+            errorCode: undefined,
+            errorMessage: undefined,
+            events: [...retryable.events, {
+              type: retryable.status === 'failed' || retryable.status === 'needs-attention' ? 'retried' : 'requeued',
+              at,
+            }],
+          }
+          await jobs.put(next)
+          await tx.done
+          return next
+        }
+
+        await jobs.add(job)
+        await tx.done
+        return job
+      } catch (cause) {
+        await tx.done.catch(() => undefined)
+        throw cause
+      }
+    },
+
+    async startProcessingJob(id: string, now: Date, leaseMs: number) {
+      const db = await connection()
+      const tx = db.transaction('processingJobs', 'readwrite')
+      const store = tx.objectStore('processingJobs')
+      const job = await store.get(id)
+      if (!job || job.status !== 'queued') {
+        await tx.done
+        return undefined
+      }
+      const at = now.toISOString()
+      const attemptCount = job.attemptCount + 1
+      const next: ProcessingJob = {
+        ...job,
+        status: 'extracting',
+        stage: 'extracting',
+        startedAt: at,
+        updatedAt: at,
+        leaseExpiresAt: now.getTime() + leaseMs,
+        attemptCount,
+        attempts: [...job.attempts, { number: attemptCount, startedAt: at }],
+        events: [...job.events, { type: 'started', at }],
+      }
+      await store.put(next)
+      await tx.done
+      return next
+    },
+
+    async renewProcessingLease(id: string, expiresAt: number) {
+      const db = await connection()
+      const tx = db.transaction('processingJobs', 'readwrite')
+      const store = tx.objectStore('processingJobs')
+      const job = await store.get(id)
+      if (!job || job.status !== 'extracting') {
+        await tx.done
+        return false
+      }
+      await store.put({ ...job, leaseExpiresAt: expiresAt, updatedAt: new Date().toISOString() })
+      await tx.done
+      return true
+    },
+
+    async completeProcessingJob(id: string, content: ExtractedContent) {
+      const db = await connection()
+      const tx = db.transaction(['processingJobs', 'extractedContent'], 'readwrite')
+      const jobs = tx.objectStore('processingJobs')
+      const job = await jobs.get(id)
+      if (!job || job.status !== 'extracting' || job.sourceFingerprint !== content.sourceFingerprint) {
+          await tx.done.catch(() => undefined)
+        throw new Error('This processing job changed before its result could be saved.')
+      }
+      const at = content.extractedAt
+      const lastAttempt = job.attempts.at(-1)
+      const next: ProcessingJob = {
+        ...job,
+        status: 'completed',
+        stage: undefined,
+        activeKey: undefined,
+        leaseExpiresAt: undefined,
+        updatedAt: at,
+        completedAt: at,
+        resultId: content.id,
+        errorCode: undefined,
+        errorMessage: undefined,
+        attempts: lastAttempt
+          ? [...job.attempts.slice(0, -1), { ...lastAttempt, finishedAt: at, outcome: 'completed' }]
+          : job.attempts,
+        events: [...job.events, { type: 'completed', at }],
+      }
+      await tx.objectStore('extractedContent').add(content)
+      await jobs.put(next)
+      await tx.done
+      return next
+    },
+
+    async failProcessingJob(id: string, status: Extract<ProcessingStatus, 'failed' | 'needs-attention'>, errorCode: string, errorMessage: string) {
+      const db = await connection()
+      const tx = db.transaction('processingJobs', 'readwrite')
+      const store = tx.objectStore('processingJobs')
+      const job = await store.get(id)
+      if (!job || job.status !== 'extracting') {
+        await tx.done
+        return job
+      }
+      const at = new Date().toISOString()
+      const lastAttempt = job.attempts.at(-1)
+      const next: ProcessingJob = {
+        ...job,
+        status,
+        activeKey: undefined,
+        leaseExpiresAt: undefined,
+        updatedAt: at,
+        errorCode,
+        errorMessage,
+        attempts: lastAttempt
+          ? [...job.attempts.slice(0, -1), { ...lastAttempt, finishedAt: at, outcome: status, errorCode, errorMessage }]
+          : job.attempts,
+        events: [...job.events, { type: status, at, message: errorMessage }],
+      }
+      await store.put(next)
+      await tx.done
+      return next
+    },
+
+    async skipProcessingJob(id: string) {
+      const db = await connection()
+      const tx = db.transaction('processingJobs', 'readwrite')
+      const store = tx.objectStore('processingJobs')
+      const job = await store.get(id)
+      if (!job || !['queued', 'failed', 'needs-attention'].includes(job.status)) {
+        await tx.done
+        return job
+      }
+      const at = new Date().toISOString()
+      const next: ProcessingJob = {
+        ...job,
+        status: 'skipped',
+        activeKey: undefined,
+        stage: undefined,
+        leaseExpiresAt: undefined,
+        updatedAt: at,
+        events: [...job.events, { type: 'skipped', at }],
+      }
+      await store.put(next)
+      await tx.done
+      return next
+    },
+
+    async recoverExpiredProcessingJobs(now = Date.now()) {
+      const db = await connection()
+      const tx = db.transaction('processingJobs', 'readwrite')
+      const store = tx.objectStore('processingJobs')
+      const active = await store.index('by-status').getAll('extracting')
+      const expired = active.filter((job) => job.leaseExpiresAt !== undefined && job.leaseExpiresAt <= now)
+      const at = new Date(now).toISOString()
+      const message = 'Processing stopped before it finished. Retry it while Siftory is open.'
+      const writes = expired.map((job): ProcessingJob => {
+        const lastAttempt = job.attempts.at(-1)
+        const next: ProcessingJob = {
+          ...job,
+          status: 'needs-attention',
+          activeKey: undefined,
+          leaseExpiresAt: undefined,
+          updatedAt: at,
+          errorCode: 'interrupted',
+          errorMessage: message,
+          attempts: lastAttempt
+            ? [...job.attempts.slice(0, -1), { ...lastAttempt, finishedAt: at, outcome: 'needs-attention', errorCode: 'interrupted', errorMessage: message }]
+            : job.attempts,
+          events: [...job.events, { type: 'needs-attention', at, message }],
+        }
+        return next
+      })
+      await Promise.all(writes.map((job) => store.put(job)))
+      await tx.done
+      return writes
+    },
+
     async saveItem(item: SavedItem) {
       const db = await connection()
       const tx = db.transaction('savedItems', 'readwrite')
@@ -81,9 +326,15 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'sourceFiles'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent'], 'readwrite')
+      const jobs = await tx.objectStore('processingJobs').index('by-item').getAllKeys(id)
+      const contents = await tx.objectStore('extractedContent').index('by-item').getAllKeys(id)
       await tx.objectStore('savedItems').delete(id)
       await tx.objectStore('sourceFiles').delete(id)
+      await Promise.all([
+        ...jobs.map((key) => tx.objectStore('processingJobs').delete(key)),
+        ...contents.map((key) => tx.objectStore('extractedContent').delete(key)),
+      ])
       await tx.done
     },
 

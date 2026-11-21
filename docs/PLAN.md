@@ -1,4 +1,4 @@
-# Siftory Phase Plan
+﻿# Siftory Phase Plan
 
 ## Purpose
 
@@ -14,7 +14,7 @@ Use it alongside:
 
 ## Destination
 
-Deliver a calm, responsive, local-first research library where a person can import saved material, find it, organize it, understand available content, and use traceable evidence in research. The core library must remain useful without AI credentials or a paid service. Users retain control of their data through manual backup and restore.
+Deliver a calm, responsive, local-first research library where a person can import saved material, find it, organize it, understand it with AI they explicitly connect through their ChatGPT plan, and use traceable evidence in research. AI is a core product capability, while the library remains useful without AI. Users retain control of their data through manual backup and restore.
 
 ## Project boundaries
 
@@ -22,7 +22,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 - Preserve the working starter stack and conventions; choose additional libraries only when a phase requires them.
 - Keep source records, extracted content, generated analysis, and user notes distinct.
 - Make processing capability and failure states honest. A URL does not guarantee access to media or transcripts.
-- Keep AI providers optional and replaceable. Codex is a development agent, not Siftory's runtime model.
+- Keep AI providers modular. The preferred runtime path is explicit Sign in with ChatGPT plan-use consent for an eligible, locally hosted/open-source app; never infer access from ordinary ChatGPT sign-in.
+- Never reuse undocumented Codex credentials or private endpoints. The ApplyDock Codex CLI approach is a documented local reference to evaluate, not permission to read CLI credential files.
 - Do not introduce mandatory cloud sync, backend services, paid APIs, or platform access workarounds.
 - Keep each phase runnable and reviewable before beginning the next phase.
 
@@ -35,9 +36,10 @@ Deliver a calm, responsive, local-first research library where a person can impo
 | 2. Library foundation | Useful local library, organization, and keyword search | Phase 1 |
 | 3. Import system | Validated, reviewable imports into the library | Phase 2 |
 | 4. Processing foundation | Persistent, recoverable jobs and honest extraction boundaries | Phase 3 |
-| 5. Knowledge layer | Traceable extracted content, structured analysis, and indexing | Phase 4 |
-| 6. Research workspace | Evidence-led research over saved knowledge and optional web sources | Phase 5 and explicit provider decisions |
-| 7. Reliability and release readiness | Portable, secure, accessible, and supportable product | Phases 2–6 |
+| 5. AI-powered knowledge | ChatGPT-plan connection and traceable summaries, takeaways, categories, and mentioned links from available text | Phases 1–4 review gates |
+| 6. Source coverage | Reliable content and transcript inputs for Instagram and YouTube, with honest availability limits | Phase 5 |
+| 7. Research workspace | Evidence-led research over saved knowledge and optional web sources | Phases 5–6 |
+| 8. Reliability and release readiness | Portable, secure, accessible, and supportable product | Phases 2–7 |
 
 ## Phase details
 
@@ -83,36 +85,45 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 ### Phase 4 — Processing foundation
 
-**Goal:** Make optional extraction and analysis work visible, persistent, and recoverable.
+**Goal:** Make supported local text extraction visible, persistent, and recoverable as groundwork for the AI analysis phase.
 
 **Work:** Add persisted jobs, explicit state transitions, retry and skip behavior, processing history, provider-independent interfaces, and extraction capability reporting. Use workers only where they fit the audited app.
 
 **Gate:** Queue state survives refresh; failures can be understood and retried; duplicate concurrent work is prevented; unsupported sources are identified; the UI explains that browser-only processing runs while the app is open.
 
-### Phase 5 — Knowledge layer
+**Current status:** Implementation complete; review gate pending. IndexedDB v3 persists processing jobs and extracted text separately. Users can queue, process now, retry, skip, and inspect results. Only local `.txt` files are extracted, with strict UTF-8 decoding; other sources remain explicitly unsupported. Queue jobs are explicit-start, leased, recoverable, and protected against duplicate active jobs. Build, lint, and automated tests pass. Browser desktop/mobile and keyboard review remains open, as do Phase 3 parser/migration tests. See `docs/phases/PHASE-4-PROCESSING-FOUNDATION.md`.
 
-**Goal:** Store useful understanding with clear provenance and versioning.
+### Phase 5 — AI-powered knowledge (priority)
 
-**Work:** Represent extracted text and transcripts separately from originals. Add versioned analyses for summaries, takeaways, mentioned tools/sites/products, concepts, topics, and timestamps where supported. Begin with keyword indexing; evaluate semantic retrieval only when there is evidence it improves retrieval enough to justify its cost and complexity.
+**Goal:** Deliver Siftory's central promise: use an explicitly connected ChatGPT plan to turn available imported captions and text into useful, traceable understanding.
 
-**Gate:** Every analysis can be tied to the source content and processing version; user-editable classifications remain editable; unavailable content is not fabricated; search results can be traced to stored material.
+**Work:** Validate the official Sign in with ChatGPT plan-use flow for an open-source/local app; compare it with ApplyDock's local Codex CLI helper; implement the selected safe local connection; disclose exactly what leaves local storage and require explicit consent. Build a durable analysis queue and versioned results for available Instagram export captions/metadata and extracted text: summaries, key points, editable categories/tags, mentioned links/sites/tools/products, and source evidence. Revisit import size and batching so large exports can be processed incrementally. Never fetch arbitrary URLs or imply unavailable media was analyzed.
 
-### Phase 6 — Research workspace
+**Gate:** The user can connect the intended ChatGPT account and explicitly allow plan usage; submit an imported text-bearing item; see validated, stored summaries, key points, categories, and mentioned links with provenance; edit or reject classifications; retry safely; and see clear usage/failure limits. No API key or hidden Codex credential is required. Phase 3 parser/migration tests and Phase 1–4 manual review debt must be closed before implementation starts.
+
+### Phase 6 — Source coverage: Instagram and YouTube
+
+**Goal:** Supply the AI pipeline with actual content needed to understand supported saved media.
+
+**Work:** Validate Instagram export content coverage and add user-controlled import for media/transcripts actually included or legitimately obtained. Add YouTube transcript availability and ingestion only through a documented, permitted source path; offer user-provided transcript import when automatic captions are unavailable. Keep URLs and transcripts distinct, preserve timestamps when available, and pass transcript text through the Phase 5 analysis pipeline. Do not bypass login, access controls, or platform restrictions; do not claim media analysis without usable content.
+
+**Gate:** Instagram and YouTube items clearly distinguish metadata-only, transcript available, unsupported, and analyzed states. Available transcript text can be summarized and traced to its source; inaccessible media has an actionable explanation.
+
+### Phase 7 — Research workspace
 
 **Goal:** Answer questions from saved knowledge first, then expand to external sources only when explicitly supported.
 
-**Work:** Build Library Search with saved-item references and citations. Add Library + Web and Deep Research only after the required provider, consent, sourcing, and freshness behavior is decided. Persist research sessions and their references.
+**Work:** Build Library Search with saved-item references and citations. Add Library + Web and Deep Research only after the provider, consent, sourcing, and freshness behavior is decided. Persist research sessions and their references.
 
-**Gate:** Saved evidence, external evidence, and model interpretation are distinguishable; citations resolve to actual sources; insufficient or conflicting evidence is represented honestly; no runtime API or paid provider is assumed.
+**Gate:** Saved evidence, external evidence, and model interpretation are distinguishable; citations resolve to actual sources; insufficient or conflicting evidence is represented honestly.
 
-### Phase 7 — Reliability and release readiness
+### Phase 8 — Reliability and release readiness
 
 **Goal:** Confirm that the product protects user data and communicates its limits before release.
 
 **Work:** Review backup/restore round trips, migrations, storage quotas, interrupted operations, accessibility, responsive behavior, performance, privacy, security, error recovery, and user-facing help. Run the checks supported by the actual project setup.
 
 **Gate:** Core flows and data portability meet their acceptance criteria; no secrets are exposed; known limits are documented; release evidence reflects checks actually performed.
-
 ## How phase plans will be written
 
 Before coding a phase, create a focused plan under `docs/phases/` using the phase number and name. Each detailed plan should include:
@@ -127,6 +138,8 @@ Before coding a phase, create a focused plan under `docs/phases/` using the phas
 
 Review and agree on that focused plan before substantial implementation. Complete and review one phase before planning the next; revise this overview only when product scope, dependencies, or confirmed decisions change.
 
-## First milestone
+## Phase audit and next gate
 
-Add and run focused Phase 3 parser/migration tests. Then complete the outstanding desktop/mobile and keyboard reviews for Phases 1–3 when a browser surface is available.
+**Audit result:** Phase 0 implementation/audit is complete. Phases 1 and 2 are implemented with build/tests, but manual desktop/mobile/keyboard reviews remain open. Phase 3 import code is implemented, but parser/migration tests and manual review remain open. Phase 4 processing code is implemented; current build, lint, and 23 automated tests pass, but manual browser/keyboard review remains open. These phases are not all fully closed.
+
+**Next gate:** Close Phase 3 parser/migration tests and complete the outstanding Phase 1–4 browser, responsive, and keyboard checks. Then execute Phase 5 as the next product priority. `docs/phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md` records the focused plan; AI implementation has not started.

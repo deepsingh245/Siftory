@@ -19,6 +19,11 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 | Import previews are local and require explicit confirmation | Confirmed (2026-11-21) | Parsing must not mutate the library; users review warnings and duplicates before adding Inbox records |
 | Phase 3 import bounds | Confirmed (2026-11-21) | JSON/bookmark files up to 10 MiB; original PDF/text files up to 20 MiB each and 50 MiB total per selection; previews up to 1,000 rows; each save transaction is limited to 100 selected rows; imported titles/creator fields 300 characters, descriptions 20,000, URLs 4,096; bookmark nesting 100 levels |
 | Imported files use IndexedDB schema version 2 | Confirmed (2026-11-21) | Original PDF/text Blobs remain local and downloadable from item detail; item and file writes/deletes share a transaction |
+| Phase 4 processing uses IndexedDB schema version 3 | Confirmed (2026-11-21) | Persist jobs separately from source files and extracted results; migration preserves earlier library data |
+| Phase 4 extraction is explicit and local `.txt` only | Confirmed (2026-11-21) | Strict UTF-8 decoding, 20 MiB limit, no URL fetching or network transfer; unsupported sources show capability reasons |
+| Processing retries preserve attempts on the same job and expired leases need attention | Confirmed (2026-11-21) | Keeps history auditable and avoids presenting interrupted work as complete or silently rerunning it |
+| Siftory's core understanding workflow should use the user's ChatGPT plan when explicitly connected | Confirmed (2026-11-21) | User requirement; AI summaries, key points, categories, and mentioned links are central product value, while the base library remains usable without AI |
+| Official Sign in with ChatGPT plan-use is the preferred integration to evaluate | Proposed (2026-11-21) | OpenAI documents a plan-use flow for eligible open-source/local apps; implementation remains subject to current preview limits, eligibility, secure local token handling, and a feasibility spike |
 | Import result reports are session-only | Confirmed (2026-11-21) | Avoids another persistent history store; provenance remains on each imported item and row outcomes are shown after confirmation |
 | Phase 3 file formats | Confirmed (2026-11-21) | Instagram JSON top-level arrays, Netscape bookmark HTML, HTTP(S) URLs, PDF, and `.txt`; no URL fetch or PDF extraction |
 | Phase 3 duplicate review | Confirmed (2026-11-21) | Prefer source record ID, canonical URL, then SHA-256 file fingerprint; exact matches start unchecked; title matches are warnings only and never merge automatically |
@@ -45,7 +50,7 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 1. Long-term database migration and backup/restore format.
 2. Local transcription feasibility on the user's hardware.
-3. Runtime AI provider strategy; Codex sign-in is not an app API.
+3. Complete the ChatGPT-plan provider feasibility spike and select official Sign in with ChatGPT plan-use or another explicitly verified local approach; ordinary ChatGPT sign-in is not itself an inference API grant.
 4. Semantic search/embedding provider and storage cost.
 5. Which source adapters can reliably extract actual content under legitimate access conditions.
 6. Whether any local helper process is justified for protected credentials or local model execution.
@@ -57,5 +62,6 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 - Platform restrictions must not be bypassed.
 - Browser-only processing does not continue while the browser is closed.
 - Browser IndexedDB is device/browser-specific and may be cleared or evicted.
-- ChatGPT/Codex subscription access must not be treated as general runtime API access.
+- Do not treat ordinary ChatGPT sign-in as runtime access. Use only a documented plan-use grant with explicit consent; never extract Codex CLI credentials or call private endpoints.
+- ChatGPT-plan usage has eligibility and usage limits. Never add an API-key or paid-provider fallback without an explicit product decision and user consent.
 - Do not add cloud sync unless the product decision is explicitly revisited.

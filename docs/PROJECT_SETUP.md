@@ -1,8 +1,8 @@
-# Project Setup and Phase 0 Audit
+﻿# Project Setup and Phase 0 Audit
 
 ## Current state
 
-Audited on 2026-11-20; updated for Phase 3 on 2026-11-21. The repository has a runnable Vite + React + TypeScript application using npm. Phases 2 and 3 provide a local library, organization, search, recent history, and review-before-save imports from Instagram JSON, bookmark HTML, URLs, PDFs, and text files. Extraction, AI, backup/restore, and research workflows are not implemented. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20; updated for Phase 4 on 2026-11-21. The repository has a runnable Vite + React + TypeScript application using npm. Phases 2–4 provide a local library, organization, search, recent history, review-before-save imports, and a persistent processing queue that extracts local `.txt` files. PDF extraction, arbitrary URL fetching, AI account connection/analysis, backup/restore, and research workflows are not implemented. The starter pack supplied product and implementation guidance but no application source.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -17,7 +17,7 @@ The repository was initialized with Git before this task. No remote push or comm
 - Product code is organized under `src/app`, `src/domain`, `src/features/library`, and `src/infrastructure/persistence`.
 - `tests/unit` and `tests/integration` cover domain rules and the IndexedDB repository. The test runner is Vitest.
 - `src/domain/imports.ts` parses and validates import candidates locally; `src/features/import/` provides preview, duplicate review, and explicit confirmation.
-- IndexedDB schema version 2 stores original PDF/text files separately and atomically with their library records.
+- IndexedDB schema version 3 stores original PDF/text files, persistent processing jobs, and separately attributed extracted text.
 
 ## Phase 0 audit results
 
@@ -58,12 +58,12 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 
 - Added local import adapters for Instagram JSON top-level arrays, Netscape bookmark HTML, manual HTTP(S) URLs, and PDF/plain-text files.
 - Added review-before-save UI with editable title/description, source warnings, exact duplicate review, row selection, file/row limits, and per-row outcomes. Import never fetches a supplied link.
-- Original Instagram/bookmark row metadata is retained on the saved item. Original PDF/text bytes remain local in IndexedDB schema version 2 and can be downloaded from item detail.
+- Original Instagram/bookmark row metadata is retained on the saved item. Original PDF/text bytes remain local in IndexedDB schema version 3 and can be downloaded from item detail.
 - Confirmed rows and attached source files are committed together in one IndexedDB transaction. The result report is session-only; item provenance persists.
 - `npm run build` and `npm run lint` pass. Automated Phase 3 parser/migration tests have not been added or run; manual browser and keyboard review also remains pending.
 - No extraction, PDF text reading, AI, cloud transfer, or backup behavior was added.
 
-No existing application logic was available to reuse during Phase 0. Phase 2 confirms `idb` over IndexedDB and native hash routes without a routing dependency. Runtime AI providers, content extraction, and semantic search remain open for later phases.
+No existing application logic was available to reuse during the Phase 0 audit. Phase 2 confirmed `idb` over IndexedDB and native hash routes without a routing dependency. The current Phase 5 plan prioritizes an authorized ChatGPT-plan AI connection and analysis; content coverage and semantic search remain later work.
 
 ## Repository layout
 
@@ -96,12 +96,12 @@ No existing application logic was available to reuse during Phase 0. Phase 2 con
 - Core skills are copied from the Claude Engineering Starter template (`template/.claude/skills`); optional packs come from `optional-skills/` and are chosen based on the app's stack and needs. They are copied into `.agents/skills/` and intentionally Git-ignored. The initializer accepts repeated `--include-skill <name>` flags.
 - Local skills available here: `emil-design-eng`, `improve-animations`, `review-animations`, `vercel-react-best-practices`, `graphify`, `data-integrity-and-imports`, `privacy-security-review`, `accessibility-review`, and `testing-release-readiness`. Graphify CLI remains a separate optional global install.
 - `docs/ai/CODEX_MASTER_PROMPT.md` is the full phased product brief for implementation-start tasks.
-- No runtime AI credentials, providers, or API integration are configured. None is needed for the scaffold.
+- No runtime AI connection or analysis is implemented. The prioritized plan evaluates official Sign in with ChatGPT plan-use for an eligible local/open-source app and the ApplyDock local Codex CLI reference. Siftory will not require an API key for its planned AI feature.
 
 ## Decisions and open setup items
 
-The Vite + React + TypeScript starter, npm, IndexedDB through `idb` (schema version 2), Vitest with fake-indexeddb, native hash routes, and Phase 3 import limits/transaction behavior are confirmed in `DECISIONS.md`. Runtime AI options, source extraction capabilities, and semantic search remain open. Choose them only when a focused phase plan establishes the need and considers the user's runtime and privacy needs.
+The Vite + React + TypeScript starter, npm, IndexedDB through `idb` (schema version 3), Vitest with fake-indexeddb, native hash routes, and Phase 3 import limits/transaction behavior are confirmed in `DECISIONS.md`. The user has confirmed ChatGPT-plan usage as the preferred AI product goal; the official Sign in with ChatGPT plan-use path is proposed pending a focused feasibility check.
 
 ## Next milestone
 
-Phase 0 and Phase 2 implementation and the core Phase 3 import flow are in place. Add and run Phase 3 parser/migration tests, then complete manual desktop/mobile and keyboard review of Phases 1–3 before closing their review gates.
+Phase 0–4 code foundations are in place, but review gates are still open: Phase 3 parser/migration tests and Phase 1–4 manual desktop/mobile/keyboard reviews. Current build, lint, and all 23 automated tests pass. Close those gates before Phase 5 AI implementation. See `docs/PLAN.md` and `docs/phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md`.

@@ -90,6 +90,16 @@ Detailed analysis target:
 
 AI output must be stored separately from original source data and be reproducible/versioned. User must be able to edit classifications and notes.
 
+### ChatGPT-plan connection and consent
+
+- Prefer a documented Sign in with ChatGPT plan-use flow for an eligible, locally hosted/open-source app; ordinary account sign-in alone does not authorize AI requests.
+- Clearly distinguish identity sign-in from permission to use ChatGPT plan allowance. Ask before sending selected source content for analysis and explain what leaves the device.
+- Do not require an API key or silently switch to API billing or another paid provider. Respect current account/model eligibility, app usage limits, workspace permissions, revocation, and plan-use failures.
+- Use only documented public integration endpoints and supported request settings. Never use ChatGPT private endpoints, read Codex CLI credential files, or expose OAuth tokens to frontend code/browser storage.
+- Keep the library useful when AI is disconnected, unavailable, out of allowance, or declined.
+- AI analysis may only use content Siftory actually possesses or is permitted to obtain. Instagram metadata-only records and YouTube URLs must not be represented as analyzed media.
+- The current plan-use inference flow does not support audio/video or transcription requests; YouTube processing requires a separately supported transcript source or user-provided transcript.
+
 ## 7. Processing queue
 
 - Queue survives page refresh through local persistence.

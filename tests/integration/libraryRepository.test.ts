@@ -35,7 +35,7 @@ describe('local library database', () => {
 
     const db = await openLibraryDatabase(name)
     expect(db.version).toBe(databaseVersion)
-    expect([...db.objectStoreNames]).toEqual(['categories', 'collections', 'savedItems', 'tags'])
+    expect([...db.objectStoreNames]).toEqual(['categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags'])
     db.close()
   })
 

@@ -1,8 +1,8 @@
-# Siftory Architecture
+﻿# Siftory Architecture
 
 ## Architecture status
 
-This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based navigation under `src/app/`. Phase 3 adds local import adapters and preview UI under `src/domain/imports.ts` and `src/features/import/`; IndexedDB schema version 2 stores original imported PDF/text files. Preserve starter conventions and inspect live code before adding libraries or replacing infrastructure. Extraction, AI, backup/restore, and research remain future work.
+This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based navigation under `src/app/`. Phase 3 adds local import adapters and preview UI under `src/domain/imports.ts` and `src/features/import/`; IndexedDB schema version 2 stores original imported PDF/text files. Phase 4 adds schema version 3 processing jobs, separate extracted text, queue UI, and local `.txt` extraction. Phase 5 plans the first AI connection and analysis workflow; it is not implemented. PDF extraction, broad source access, backup/restore, and research remain future work.
 
 ## Principles
 
@@ -30,7 +30,7 @@ Use cases and domain services:
 - Export and restore data.
 
 ### Persistence
-Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. Schema version 2 stores saved items, collections, categories, tags, and source-file Blobs. Version 1 records and relationships are preserved during upgrade. Imported items and original files are written in one transaction; deleting an item also deletes its source file. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
+Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. Schema version 3 stores saved items, collections, categories, tags, source-file Blobs, processing jobs, and extracted content. Earlier records and relationships are preserved during upgrade. Imported items and original files are written in one transaction; deleting an item also deletes its source file, jobs, and extracted text. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
 
 ### Ingestion adapters
 One adapter per supported source format:
@@ -43,15 +43,7 @@ One adapter per supported source format:
 Each adapter returns normalised domain data plus source-specific metadata and warnings.
 
 ### Extraction providers
-Optional providers for:
-- Page metadata/content extraction.
-- Transcript retrieval.
-- Local transcription.
-- PDF/text extraction.
-- Image OCR.
-
-Availability varies by source, environment and permissions.
-
+The current provider extracts strict UTF-8 text from imported local `.txt` files up to 20 MiB. It stores output separately with source fingerprint and extractor version. PDF, URL, social/video, transcription, and OCR extraction are not implemented; availability is reported explicitly.
 ### AI providers
 Provider-independent interface for:
 - Summarisation.
@@ -64,15 +56,13 @@ Do not bind domain logic directly to a vendor SDK.
 
 ## Runtime AI boundary
 
-Codex is the local development agent. It is not a supported runtime inference endpoint for Siftory.
+Codex is the local development agent. Siftory's planned runtime AI path is a distinct user-authorized ChatGPT-plan connection, not the Codex development session.
 
-ChatGPT sign-in for Codex does not automatically grant Siftory a model API. Do not use undocumented Codex internals, session tokens or private endpoints.
+Ordinary ChatGPT sign-in does not automatically grant Siftory inference access. Evaluate the documented Sign in with ChatGPT plan-use flow for eligible open-source/local apps. It requires a separate plan-use grant and uses supported public endpoints. Do not use undocumented Codex credentials, CLI credential files, session tokens, or private endpoints.
 
-Potential future runtime options must be evaluated separately:
-- Local model/provider if device capability permits.
-- Explicitly configured cloud provider with consent and protected credentials.
-- User-mediated/manual AI workflow as a fallback.
-- No-AI mode.
+If selected, keep OAuth handling and protected token storage in a local connection broker; do not expose access/refresh tokens to React, browser storage, URLs, source control, or logs. Send only explicitly selected source content after consent. The current plan-use flow has usage and capability limits; the provider adapter must report them without silent billing fallback. This is planned and not implemented.
+
+Core library use without AI remains supported. Optional future providers must be evaluated separately; an API-key provider is not assumed or silently enabled.
 
 Do not select or implement a paid API as a hidden requirement.
 
@@ -84,7 +74,7 @@ Browser storage is specific to the browser/device and may be cleared or evicted.
 
 ## Processing lifecycle
 
-A persistent job record is stored locally. The browser app processes jobs while active, using a worker where suitable for CPU-heavy parsing/indexing. A worker does not guarantee background execution after the browser closes.
+A persistent job record is stored locally. The browser app processes jobs sequentially while active after explicit user action. A time-limited lease allows expired work to be recovered as Needs Attention; it does not imply background execution after the browser closes.
 
 Job stages:
 Queued -> Extracting -> Transcribing -> Analysing -> Indexing -> Completed

@@ -51,12 +51,12 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md`.
 - No automatic cloud synchronisation in the initial product.
 - Provider-independent architecture for future AI and extraction providers.
 - Core library remains functional without AI credentials.
-- Never assume a ChatGPT subscription provides an application runtime API.
-- Never extract or reuse Codex authentication credentials for app features.
+- Ordinary ChatGPT sign-in does not by itself authorize application inference. Evaluate the documented Sign in with ChatGPT plan-use flow for eligible open-source/local apps; require the separate explicit plan-use grant and respect usage limits.
+- Never extract or reuse Codex CLI authentication credentials, read its credential files, or call private endpoints for app features. Keep OAuth tokens out of frontend bundles and browser storage.
 - Never put secrets in frontend code.
 - Never represent unavailable or failed processing as successful.
 
-Codex is the development agent, not the application's AI runtime.
+Codex is the development agent, not Siftory's runtime AI provider. Siftory's planned AI integration is a distinct, user-authorized ChatGPT-plan connection; it is not implemented yet.
 
 ## 3. Product identity and design direction
 
@@ -240,10 +240,16 @@ Implement and test initial import adapters.
 ### Phase 4 — Processing architecture
 Implement queue lifecycle, processing interfaces and provider-independent boundaries.
 
-### Phase 5 — Knowledge and research
-Implement structured analysis, indexing, retrieval and research workflows when actual providers are available.
+### Phase 5 — AI-powered knowledge
+Close earlier phase review gates, then implement the approved ChatGPT-plan connection, consented analysis queue, traceable summaries, key points, editable categories and mentioned links for content actually available to Siftory.
 
-### Phase 6 — Reliability
+### Phase 6 — Instagram and YouTube source coverage
+Add only permitted, available source text/transcripts and feed them through Phase 5. Report inaccessible media honestly.
+
+### Phase 7 — Research workspace
+Implement library-grounded questions, traceable citations, and optional web research only after provider and sourcing decisions.
+
+### Phase 8 — Reliability
 Test data integrity, export/restore, performance, accessibility, error handling and security.
 
 ## 10. Codex working agreement

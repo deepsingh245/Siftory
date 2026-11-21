@@ -25,6 +25,8 @@ import type {
 import type { LibraryData } from './useLibraryData'
 import { routeHref } from '../../app/routes'
 import { ImportPage } from '../import/ImportPage'
+import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
+import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
 import './library.css'
 
 type Props = {
@@ -42,6 +44,10 @@ export function LibraryWorkspace({ route, data, query }: Props) {
 
   if (route.page === 'import') {
     return <ImportPage data={data} />
+  }
+
+  if (route.page === 'queue') {
+    return <ProcessingQueuePage data={data} />
   }
 
   if (route.page === 'item') {
@@ -227,6 +233,7 @@ function LibraryListing({
             <li key={item.id}>
               <SavedItemCard
                 item={item}
+                data={data}
                 collections={data.collections}
                 categories={data.categories}
                 tags={data.tags}
@@ -369,8 +376,9 @@ function SelectField({ label, value, onChange, options }: {
   )
 }
 
-function SavedItemCard({ item, collections, categories, tags, onSaveToLibrary, onDelete }: {
+function SavedItemCard({ item, data, collections, categories, tags, onSaveToLibrary, onDelete }: {
   item: SavedItem
+  data: LibraryData
   collections: Collection[]
   categories: Category[]
   tags: Tag[]
@@ -395,6 +403,7 @@ function SavedItemCard({ item, collections, categories, tags, onSaveToLibrary, o
       </div>
       <div className="saved-item-actions">
         <a href={routeHref({ page: 'item', id: item.id })}>Open item</a>
+        {item.status === 'inbox' && <ProcessingCardAction item={item} data={data} />}
         {onSaveToLibrary && <button className="quiet-button" type="button" onClick={onSaveToLibrary}>Move to All Saved</button>}
         <button className="quiet-button danger-button" type="button" onClick={onDelete}>Remove</button>
       </div>
@@ -497,6 +506,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
             </section>
             <section className="detail-panel"><h2>Description or caption</h2><p>{item.description || 'No description has been added.'}</p></section>
             <section className="detail-panel"><h2>Your notes</h2><p className="detail-notes">{item.userNotes || 'No notes yet.'}</p></section>
+            <ProcessingPanel item={item} data={data} />
           </div>
           <aside className="detail-aside" aria-label="Organize item">
             <RelationPicker title="Collections" items={data.collections} selected={item.collectionIds} onToggle={(id, checked) => toggleRelation('collectionIds', id, checked)} />
@@ -661,7 +671,7 @@ function CollectionDetail({ collection, data }: { collection: Collection; data: 
       <div className="library-page-heading"><div><p className="library-eyebrow">COLLECTION</p><h1 id="collection-heading">{collection.name}</h1><p className="library-page-description">{items.length} {items.length === 1 ? 'saved item' : 'saved items'}</p></div><button className="quiet-button danger-button" type="button" onClick={remove}>Delete collection</button></div>
       {error && <p className="library-error" role="alert">{error}</p>}
       <form className="collection-edit" onSubmit={save}><TextField label="Collection name" value={name} onChange={setName} /><TextField label="Description" value={description} onChange={setDescription} /><button className="primary-button" type="submit">Save collection</button></form>
-      {items.length ? <ul className="saved-items saved-items--list">{filterAndSortItems(items).map((item) => <li key={item.id}><SavedItemCard item={item} collections={data.collections} categories={data.categories} tags={data.tags} onDelete={() => { if (window.confirm(`Remove “${displayTitle(item)}” from this library?`)) void data.actions.deleteItem(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The item could not be removed.')) }} /></li>)}</ul> : <div className="library-empty-state"><h2>This collection is empty.</h2><p>Add it to an item from that item's detail page.</p></div>}
+      {items.length ? <ul className="saved-items saved-items--list">{filterAndSortItems(items).map((item) => <li key={item.id}><SavedItemCard item={item} data={data} collections={data.collections} categories={data.categories} tags={data.tags} onDelete={() => { if (window.confirm(`Remove “${displayTitle(item)}” from this library?`)) void data.actions.deleteItem(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The item could not be removed.')) }} /></li>)}</ul> : <div className="library-empty-state"><h2>This collection is empty.</h2><p>Add it to an item from that item's detail page.</p></div>}
     </section>
   )
 }

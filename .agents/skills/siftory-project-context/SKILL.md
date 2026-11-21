@@ -24,7 +24,8 @@ Use this skill for work on Siftory. `AGENTS.md` remains the persistent repositor
 
 - Siftory is **Save less. Understand more.** — a local-first personal AI Research Library with a calm “Quiet Editorial Research Desk” visual direction.
 - Preserve user ownership with local data and manual export/restore. Do not introduce automatic cloud sync or a mandatory backend.
-- Keep the core library useful without AI. Codex is a development agent, not the product runtime model; never infer that ChatGPT sign-in supplies an application API.
+- Keep the core library useful without AI. Never infer that ordinary ChatGPT sign-in supplies app inference. Evaluate only the documented Sign in with ChatGPT plan-use flow for eligible open-source/local apps, with explicit separate consent and usage-limit handling.
+- Never access undocumented Codex credentials or private endpoints. Never expose API/OAuth tokens in the browser bundle or browser storage; do not read Codex CLI credential files.
 - Do not expose secrets in frontend code or use undocumented Codex credentials/endpoints. Cloud AI requires clear disclosure and user consent.
 - Preserve original sources and distinguish them from extracted content, model-generated analysis, and user notes. Report unavailable or failed processing accurately.
 - Keep classifications editable and citations traceable. Never fabricate content, transcript, progress, or evidence.
