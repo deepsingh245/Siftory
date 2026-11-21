@@ -51,6 +51,20 @@ export type SavedItem = {
   collectionIds: string[]
   categoryIds: string[]
   tagIds: string[]
+  sourceMetadata?: Record<string, unknown>
+  sourceRecordId?: string
+  sourceFingerprint?: string
+  sourceFileId?: string
+}
+
+export type SourceFileRecord = {
+  savedItemId: string
+  fileName: string
+  mediaType: string
+  size: number
+  blob: Blob
+  sha256: string
+  createdAt: string
 }
 
 export type Collection = {

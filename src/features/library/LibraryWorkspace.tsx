@@ -18,11 +18,13 @@ import type {
   ItemDraft,
   ItemFilters,
   SavedItem,
+  SourceFileRecord,
   SourceType,
   Tag,
 } from '../../domain/library'
 import type { LibraryData } from './useLibraryData'
 import { routeHref } from '../../app/routes'
+import { ImportPage } from '../import/ImportPage'
 import './library.css'
 
 type Props = {
@@ -36,6 +38,10 @@ export function LibraryWorkspace({ route, data, query }: Props) {
 
   if (data.loading) {
     return <div className="library-state" role="status">Opening your local library...</div>
+  }
+
+  if (route.page === 'import') {
+    return <ImportPage data={data} />
   }
 
   if (route.page === 'item') {
@@ -399,10 +405,39 @@ function SavedItemCard({ item, collections, categories, tags, onSaveToLibrary, o
 function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string>()
+  const [sourceFile, setSourceFile] = useState<SourceFileRecord>()
+  const [sourceFileLookupId, setSourceFileLookupId] = useState<string>()
+  const markViewed = data.actions.markViewed
+  const getSourceFile = data.getSourceFile
 
   useEffect(() => {
-    void data.actions.markViewed(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not update recent history.'))
-  }, [data.actions, item.id])
+    void markViewed(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not update recent history.'))
+  }, [markViewed, item.id])
+
+  useEffect(() => {
+    let active = true
+    if (item.sourceFileId) {
+      void getSourceFile(item.sourceFileId).then((file) => {
+        if (active) {
+          setSourceFile(file)
+          setSourceFileLookupId(item.sourceFileId)
+        }
+      }).catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : 'The imported file could not be opened.')
+      })
+    }
+    return () => { active = false }
+  }, [getSourceFile, item.sourceFileId])
+
+  function downloadSourceFile() {
+    if (!sourceFile) return
+    const objectUrl = URL.createObjectURL(sourceFile.blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = sourceFile.fileName
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  }
 
   async function save(draft: ItemDraft) {
     setError(undefined)
@@ -457,6 +492,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
                 <DetailRow label="Creator handle">{item.creatorHandle ? `@${item.creatorHandle}` : 'Not added'}</DetailRow>
                 <DetailRow label="Date saved">{item.savedAt || 'Not added'}</DetailRow>
                 <DetailRow label="Added to Siftory">{new Date(item.createdAt).toLocaleDateString()}</DetailRow>
+                {item.sourceFileId && <DetailRow label="Original file">{sourceFileLookupId !== item.sourceFileId ? 'Loading local file…' : sourceFile?.savedItemId === item.sourceFileId ? <button className="text-link-button" type="button" onClick={downloadSourceFile}>Download {sourceFile.fileName} ({Math.ceil(sourceFile.size / 1024)} KB)</button> : 'The original local file is unavailable.'}</DetailRow>}
               </dl>
             </section>
             <section className="detail-panel"><h2>Description or caption</h2><p>{item.description || 'No description has been added.'}</p></section>

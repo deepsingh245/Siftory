@@ -1,5 +1,5 @@
 import type { IDBPDatabase } from 'idb'
-import type { Category, Collection, SavedItem, Tag } from '../../domain/library'
+import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import { databaseName } from './libraryDatabase'
 import { openLibraryDatabase } from './libraryDatabase'
 import type { LibraryDatabase } from './libraryDatabase'
@@ -43,6 +43,27 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       return (await connection()).getFromIndex('savedItems', 'by-url', url)
     },
 
+    async saveImportedBatch(items: SavedItem[], files: SourceFileRecord[]) {
+      if (!items.length) return
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'sourceFiles'], 'readwrite')
+      try {
+        const requests = [
+          ...items.map((item) => tx.objectStore('savedItems').add(item)),
+          ...files.map((file) => tx.objectStore('sourceFiles').add(file)),
+        ]
+        await Promise.all(requests)
+        await tx.done
+      } catch (cause) {
+        await tx.done.catch(() => undefined)
+        throw cause
+      }
+    },
+
+    async getSourceFile(savedItemId: string) {
+      return (await connection()).get('sourceFiles', savedItemId)
+    },
+
     async saveItem(item: SavedItem) {
       const db = await connection()
       const tx = db.transaction('savedItems', 'readwrite')
@@ -60,8 +81,9 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction('savedItems', 'readwrite')
-      await tx.store.delete(id)
+      const tx = db.transaction(['savedItems', 'sourceFiles'], 'readwrite')
+      await tx.objectStore('savedItems').delete(id)
+      await tx.objectStore('sourceFiles').delete(id)
       await tx.done
     },
 

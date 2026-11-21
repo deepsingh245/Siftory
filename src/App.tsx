@@ -70,7 +70,7 @@ type NavigationItem = {
 }
 
 const navigationGroups: { label: string; items: NavigationItem[] }[] = [
-  { label: 'Library', items: [{ label: 'All saved', icon: 'all', href: '#/library', page: 'library' }, { label: 'Inbox', icon: 'inbox', href: '#/inbox', page: 'inbox' }] },
+  { label: 'Library', items: [{ label: 'All saved', icon: 'all', href: '#/library', page: 'library' }, { label: 'Inbox', icon: 'inbox', href: '#/inbox', page: 'inbox' }, { label: 'Import', icon: 'arrow', href: '#/import', page: 'import' }] },
   { label: 'Organize', items: [{ label: 'Collections', icon: 'collection', href: '#/collections', page: 'collections' }, { label: 'Categories', icon: 'category', href: '#/categories', page: 'categories' }, { label: 'Tags', icon: 'tag', href: '#/tags', page: 'tags' }] },
   { label: 'Discover', items: [{ label: 'Recently viewed', icon: 'recent', href: '#/recent', page: 'recent' }, { label: 'Research', icon: 'research' }, { label: 'Processing queue', icon: 'queue' }, { label: 'Insights', icon: 'insights' }] },
 ]
@@ -129,6 +129,7 @@ function routeTitle(route: AppRoute) {
   if (route.page === 'collections' || route.page === 'collection') return 'Collections'
   if (route.page === 'categories' || route.page === 'category') return 'Categories'
   if (route.page === 'tags' || route.page === 'tag') return 'Tags'
+  if (route.page === 'import') return 'Import'
   return 'Saved item'
 }
 

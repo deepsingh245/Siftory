@@ -16,6 +16,12 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 | IndexedDB schema version 1 for library records | Confirmed (2026-11-21) | Local persistence for saved items and user organization; browser/device-specific, with no cloud service |
 | Vitest and fake-indexeddb for automated tests | Confirmed (2026-11-21) | Vite-aligned test runner and deterministic IndexedDB tests; avoids requiring a browser UI for core repository tests |
 | Native hash routes for app screens | Confirmed (2026-11-21) | Browser back/forward and item links work without a routing dependency |
+| Import previews are local and require explicit confirmation | Confirmed (2026-11-21) | Parsing must not mutate the library; users review warnings and duplicates before adding Inbox records |
+| Phase 3 import bounds | Confirmed (2026-11-21) | JSON/bookmark files up to 10 MiB; original PDF/text files up to 20 MiB each and 50 MiB total per selection; previews up to 1,000 rows; each save transaction is limited to 100 selected rows; imported titles/creator fields 300 characters, descriptions 20,000, URLs 4,096; bookmark nesting 100 levels |
+| Imported files use IndexedDB schema version 2 | Confirmed (2026-11-21) | Original PDF/text Blobs remain local and downloadable from item detail; item and file writes/deletes share a transaction |
+| Import result reports are session-only | Confirmed (2026-11-21) | Avoids another persistent history store; provenance remains on each imported item and row outcomes are shown after confirmation |
+| Phase 3 file formats | Confirmed (2026-11-21) | Instagram JSON top-level arrays, Netscape bookmark HTML, HTTP(S) URLs, PDF, and `.txt`; no URL fetch or PDF extraction |
+| Phase 3 duplicate review | Confirmed (2026-11-21) | Prefer source record ID, canonical URL, then SHA-256 file fingerprint; exact matches start unchecked; title matches are warnings only and never merge automatically |
 | Web application | Confirmed | Primary product surface |
 | Manual backup/restore | Confirmed | No automatic cross-device sync |
 | No mandatory cloud backend | Confirmed | Keep cost and operational complexity low |

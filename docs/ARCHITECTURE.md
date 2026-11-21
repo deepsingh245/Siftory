@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB schema/repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based screen navigation under `src/app/`. Preserve the starter conventions and inspect live code before adding libraries or replacing infrastructure. Batch imports, extraction, AI, backup/restore, and research are still future work.
+This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based navigation under `src/app/`. Phase 3 adds local import adapters and preview UI under `src/domain/imports.ts` and `src/features/import/`; IndexedDB schema version 2 stores original imported PDF/text files. Preserve starter conventions and inspect live code before adding libraries or replacing infrastructure. Extraction, AI, backup/restore, and research remain future work.
 
 ## Principles
 
@@ -30,7 +30,7 @@ Use cases and domain services:
 - Export and restore data.
 
 ### Persistence
-Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. The Phase 2 schema is version 1 and stores saved items, collections, categories, and tags. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
+Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. Schema version 2 stores saved items, collections, categories, tags, and source-file Blobs. Version 1 records and relationships are preserved during upgrade. Imported items and original files are written in one transaction; deleting an item also deletes its source file. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
 
 ### Ingestion adapters
 One adapter per supported source format:

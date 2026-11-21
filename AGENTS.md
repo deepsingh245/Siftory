@@ -12,7 +12,7 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md` for product intent. Read the r
 
 ## Current repository status
 
-This repository contains the Siftory shell and Phase 2 local library foundation on Vite + React + TypeScript. Manual record entry, Inbox/All Saved, local IndexedDB storage, organization, keyword search, and hash navigation are implemented. Batch imports, extraction, AI analysis, backup/restore, and research workflows are not. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
+This repository contains the Siftory shell, Phase 2 local library, and Phase 3 import foundation on Vite + React + TypeScript. Manual records, local IndexedDB storage, organization, keyword search, hash navigation, Instagram JSON/bookmark HTML/manual URL previews, and local PDF/text file import are implemented. Extraction, AI analysis, backup/restore, and research workflows are not. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
 
 ## Product and privacy constraints
 

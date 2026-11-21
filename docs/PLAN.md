@@ -79,6 +79,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** Valid records import with source metadata preserved; malformed rows have reasons; ambiguous duplicates remain reviewable; unsupported or inaccessible content is reported honestly. No platform credentials or access-control bypass is introduced.
 
+**Current status:** Core implementation is in place: local adapters, review/duplicate preview, explicit Inbox confirmation, and IndexedDB source-file storage. Build and lint pass. Automated Phase 3 parser/migration tests and manual browser/keyboard review remain outstanding, so the phase gate is open. Assumptions and limits are recorded in `docs/phases/PHASE-3-IMPORT-SYSTEM.md` and `docs/DECISIONS.md`.
+
 ### Phase 4 — Processing foundation
 
 **Goal:** Make optional extraction and analysis work visible, persistent, and recoverable.
@@ -127,4 +129,4 @@ Review and agree on that focused plan before substantial implementation. Complet
 
 ## First milestone
 
-Complete Phase 2's manual desktop/mobile and keyboard review. Then write and review a focused Phase 3 plan before implementing source imports.
+Add and run focused Phase 3 parser/migration tests. Then complete the outstanding desktop/mobile and keyboard reviews for Phases 1–3 when a browser surface is available.

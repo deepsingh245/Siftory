@@ -71,6 +71,8 @@ Exit criteria:
 - Imported items appear in Inbox.
 - Test fixtures cover valid, malformed and edge-case records.
 
+Current status: Core import UI and persistence are implemented. Automated parser/migration fixtures and manual browser/keyboard review remain outstanding; keep the Phase 3 exit gate open.
+
 ## Phase 4 — Processing foundation
 
 Tasks:

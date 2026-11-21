@@ -1,6 +1,6 @@
 # Siftory Data Model
 
-This document describes the conceptual model. Phase 2 implements the core library entities as TypeScript types in `src/domain/library.ts` and stores them in IndexedDB schema version 1. The implementation is intentionally limited to saved items, collections, user-created categories/tags, and recently viewed timestamps; extraction, analysis, jobs, and research remain future entities.
+This document describes the conceptual model. Phases 2 and 3 implement core library/import entities in `src/domain/` and store them in IndexedDB schema version 2. Extraction, analysis, jobs, and research remain future entities.
 
 ## SavedItem
 
@@ -24,6 +24,20 @@ Suggested fields:
 - `rawMetadata`: preserved source metadata where practical.
 - `status`: inbox, saved, archived or other documented lifecycle.
 - `userNotes`: user-authored notes.
+- `sourceMetadata`: original source fields retained separately from editable title/description and user notes.
+- `sourceRecordId`: stable source-provided identifier where present, used for duplicate review.
+- `sourceFingerprint`: SHA-256 fingerprint for imported file bytes when applicable.
+- `sourceFileId`: optional link to a locally stored original PDF or text file.
+
+## SourceFile
+
+Stores the original user-selected PDF or plain-text file locally for later processing:
+- `savedItemId`: associated saved-item ID and object-store key.
+- `fileName`, `mediaType`, `size`, and `sha256`.
+- `blob`: original file bytes; never uploaded or extracted in Phase 3.
+- `createdAt`.
+
+Removing a saved item removes its associated source file in the same transaction.
 
 ## ExtractedContent
 
@@ -136,6 +150,7 @@ Statuses: Pending, Queued, Extracting, Transcribing, Analysing, Indexing, Comple
 - SavedItem has zero or many Analysis versions.
 - SavedItem belongs to zero or many Collections.
 - SavedItem has zero or many Categories and Tags.
+- SavedItem may reference one locally stored `SourceFile` by `sourceFileId`.
 - SavedItem has zero or many ProcessingJobs over time.
 - ResearchSession references zero or many SavedItems and external sources.
 

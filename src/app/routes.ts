@@ -1,5 +1,5 @@
 export type AppRoute =
-  | { page: 'library' | 'inbox' | 'recent' | 'collections' | 'categories' | 'tags' }
+  | { page: 'library' | 'inbox' | 'recent' | 'collections' | 'categories' | 'tags' | 'import' }
   | { page: 'item' | 'collection' | 'category' | 'tag'; id: string }
 
 export function parseRoute(hash: string): AppRoute {
@@ -12,7 +12,7 @@ export function parseRoute(hash: string): AppRoute {
   const page = parts[0]
   const id = parts[1]
 
-  if (page === 'inbox' || page === 'recent' || page === 'collections' || page === 'categories' || page === 'tags') {
+  if (page === 'inbox' || page === 'recent' || page === 'collections' || page === 'categories' || page === 'tags' || page === 'import') {
     return { page }
   }
   if (page === 'item' && id) return { page: 'item', id }

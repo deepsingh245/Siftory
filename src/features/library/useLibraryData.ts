@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Category, Collection, SavedItem, Tag } from '../../domain/library'
+import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
 
 const repository = createLibraryRepository(undefined, () => {
@@ -16,8 +16,10 @@ export type LibraryData = {
   refresh: () => Promise<void>
   perform: <T>(task: () => Promise<T>) => Promise<T>
   findDuplicate: (canonicalUrl: string) => Promise<SavedItem | undefined>
+  getSourceFile: (savedItemId: string) => Promise<SourceFileRecord | undefined>
   actions: {
     saveItem: (item: SavedItem) => Promise<void>
+    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => Promise<void>
     deleteItem: (id: string) => Promise<void>
     markViewed: (id: string) => Promise<void>
     saveCollection: (collection: Collection) => Promise<void>
@@ -75,8 +77,10 @@ export function useLibraryData(): LibraryData {
   }, [refresh])
 
   const findDuplicate = useCallback((canonicalUrl: string) => repository.findByCanonicalUrl(canonicalUrl), [])
+  const getSourceFile = useCallback((savedItemId: string) => repository.getSourceFile(savedItemId), [])
   const actions = useMemo(() => ({
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
+    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[]) => perform(() => repository.saveImportedBatch(items, files)),
     deleteItem: (id: string) => perform(() => repository.deleteItem(id)),
     markViewed: (id: string) => perform(() => repository.markViewed(id)),
     saveCollection: (collection: Collection) => perform(() => repository.saveCollection(collection)),
@@ -87,5 +91,5 @@ export function useLibraryData(): LibraryData {
     deleteTag: (id: string) => perform(() => repository.deleteTag(id)),
   }), [perform])
 
-  return { items, collections, categories, tags, loading, error, refresh, perform, findDuplicate, actions }
+  return { items, collections, categories, tags, loading, error, refresh, perform, findDuplicate, getSourceFile, actions }
 }

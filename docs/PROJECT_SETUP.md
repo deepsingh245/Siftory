@@ -2,7 +2,7 @@
 
 ## Current state
 
-Audited on 2026-11-20; updated for Phase 2 on 2026-11-21. The repository has a runnable Vite + React + TypeScript application using npm. Phase 2 provides local manual records, Inbox/All Saved, IndexedDB persistence, organization, keyword search, filters, sorting, and recently viewed. Batch imports, extraction, AI, backup/restore, and research workflows are not implemented. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20; updated for Phase 3 on 2026-11-21. The repository has a runnable Vite + React + TypeScript application using npm. Phases 2 and 3 provide a local library, organization, search, recent history, and review-before-save imports from Instagram JSON, bookmark HTML, URLs, PDFs, and text files. Extraction, AI, backup/restore, and research workflows are not implemented. The starter pack supplied product and implementation guidance but no application source.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -16,6 +16,8 @@ The repository was initialized with Git before this task. No remote push or comm
 - The app shell uses semantic CSS tokens, dark and light themes, responsive navigation, and an empty-state illustration built with CSS.
 - Product code is organized under `src/app`, `src/domain`, `src/features/library`, and `src/infrastructure/persistence`.
 - `tests/unit` and `tests/integration` cover domain rules and the IndexedDB repository. The test runner is Vitest.
+- `src/domain/imports.ts` parses and validates import candidates locally; `src/features/import/` provides preview, duplicate review, and explicit confirmation.
+- IndexedDB schema version 2 stores original PDF/text files separately and atomically with their library records.
 
 ## Phase 0 audit results
 
@@ -51,6 +53,15 @@ The table above is the Phase 0 snapshot. Current Phase 2 behavior and checks are
 - Added Vitest and fake-indexeddb. `npm run build`, `npm run lint`, and `npm test` pass; the test suite has 15 passing tests.
 - No network fetch, import batch, AI, backend, cloud sync, or backup behavior was added.
 - Manual browser review of Phase 2 screens and keyboard flows remains pending because no browser surface was available. The Phase 1 visual-review gate is also still open; the user directed Phase 2 to proceed despite that limitation.
+
+## Phase 3 implementation
+
+- Added local import adapters for Instagram JSON top-level arrays, Netscape bookmark HTML, manual HTTP(S) URLs, and PDF/plain-text files.
+- Added review-before-save UI with editable title/description, source warnings, exact duplicate review, row selection, file/row limits, and per-row outcomes. Import never fetches a supplied link.
+- Original Instagram/bookmark row metadata is retained on the saved item. Original PDF/text bytes remain local in IndexedDB schema version 2 and can be downloaded from item detail.
+- Confirmed rows and attached source files are committed together in one IndexedDB transaction. The result report is session-only; item provenance persists.
+- `npm run build` and `npm run lint` pass. Automated Phase 3 parser/migration tests have not been added or run; manual browser and keyboard review also remains pending.
+- No extraction, PDF text reading, AI, cloud transfer, or backup behavior was added.
 
 No existing application logic was available to reuse during Phase 0. Phase 2 confirms `idb` over IndexedDB and native hash routes without a routing dependency. Runtime AI providers, content extraction, and semantic search remain open for later phases.
 
@@ -89,8 +100,8 @@ No existing application logic was available to reuse during Phase 0. Phase 2 con
 
 ## Decisions and open setup items
 
-The Vite + React + TypeScript starter, npm, IndexedDB through `idb`, schema version 1, Vitest with fake-indexeddb, and native hash routes are confirmed in `DECISIONS.md`. Runtime AI options, source extraction capabilities, and semantic search remain open. Choose them only when a focused phase plan establishes the need and considers the user's runtime and privacy needs.
+The Vite + React + TypeScript starter, npm, IndexedDB through `idb` (schema version 2), Vitest with fake-indexeddb, native hash routes, and Phase 3 import limits/transaction behavior are confirmed in `DECISIONS.md`. Runtime AI options, source extraction capabilities, and semantic search remain open. Choose them only when a focused phase plan establishes the need and considers the user's runtime and privacy needs.
 
 ## Next milestone
 
-Phase 0 and Phase 2 implementation are complete. Manual viewport and keyboard review of Phases 1 and 2 remains open. The focused Phase 3 import plan is the next planning deliverable; review it before implementing source imports.
+Phase 0 and Phase 2 implementation and the core Phase 3 import flow are in place. Add and run Phase 3 parser/migration tests, then complete manual desktop/mobile and keyboard review of Phases 1–3 before closing their review gates.
