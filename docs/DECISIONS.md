@@ -12,6 +12,10 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 | React + TypeScript direction | Confirmed | Existing starter and intended workflow |
 | Vite + React + TypeScript as the initial app scaffold | Confirmed | A client-side starter fits the local-first browser product and was created during Phase 0 |
 | npm as the package manager | Confirmed | Selected for the initial scaffold; `package-lock.json` is the dependency lockfile |
+| `idb` as the IndexedDB wrapper | Confirmed (2026-11-21) | Promise-based API keeps transaction and schema code small while using browser-native IndexedDB |
+| IndexedDB schema version 1 for library records | Confirmed (2026-11-21) | Local persistence for saved items and user organization; browser/device-specific, with no cloud service |
+| Vitest and fake-indexeddb for automated tests | Confirmed (2026-11-21) | Vite-aligned test runner and deterministic IndexedDB tests; avoids requiring a browser UI for core repository tests |
+| Native hash routes for app screens | Confirmed (2026-11-21) | Browser back/forward and item links work without a routing dependency |
 | Web application | Confirmed | Primary product surface |
 | Manual backup/restore | Confirmed | No automatic cross-device sync |
 | No mandatory cloud backend | Confirmed | Keep cost and operational complexity low |
@@ -33,13 +37,12 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 ## Open technical decisions
 
-1. Exact persistence library after starter audit.
-2. Exact router/state-management choices; prefer existing working stack.
-3. Local transcription feasibility on the user's hardware.
-4. Runtime AI provider strategy; Codex sign-in is not an app API.
-5. Semantic search/embedding provider and storage cost.
-6. Which source adapters can reliably extract actual content under legitimate access conditions.
-7. Whether any local helper process is justified for protected credentials or local model execution.
+1. Long-term database migration and backup/restore format.
+2. Local transcription feasibility on the user's hardware.
+3. Runtime AI provider strategy; Codex sign-in is not an app API.
+4. Semantic search/embedding provider and storage cost.
+5. Which source adapters can reliably extract actual content under legitimate access conditions.
+6. Whether any local helper process is justified for protected credentials or local model execution.
 
 ## Explicit constraints and cautions
 

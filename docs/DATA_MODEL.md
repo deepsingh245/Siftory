@@ -1,6 +1,6 @@
 # Siftory Data Model
 
-This is a conceptual domain model. Final TypeScript types and IndexedDB schema should be adapted to the audited starter and versioned deliberately.
+This document describes the conceptual model. Phase 2 implements the core library entities as TypeScript types in `src/domain/library.ts` and stores them in IndexedDB schema version 1. The implementation is intentionally limited to saved items, collections, user-created categories/tags, and recently viewed timestamps; extraction, analysis, jobs, and research remain future entities.
 
 ## SavedItem
 
@@ -19,6 +19,7 @@ Suggested fields:
 - `savedAt`: source/user saved timestamp when available.
 - `importedAt`: local import timestamp.
 - `updatedAt`: last local update.
+- `lastViewedAt`: last time the user opened the detail view.
 - `thumbnailRef`: optional local/remote thumbnail reference.
 - `rawMetadata`: preserved source metadata where practical.
 - `status`: inbox, saved, archived or other documented lifecycle.
@@ -96,7 +97,7 @@ User-defined grouping:
 - `createdAt`
 - `updatedAt`
 
-Use a join relationship for many-to-many SavedItem/Collection membership.
+In the current schema, a saved item stores ID lists for its collections, categories, and tags. Removing a label clears its ID from affected saved items in the same IndexedDB transaction.
 
 ## ProcessingJob
 

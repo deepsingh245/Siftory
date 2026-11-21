@@ -12,7 +12,7 @@ Read `docs/PRODUCT.md` and `docs/REQUIREMENTS.md` for product intent. Read the r
 
 ## Current repository status
 
-This repository contains a Vite + React + TypeScript app with the initial Siftory shell and visual foundation. Library data, routing, persistence, imports, and research features are not implemented. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
+This repository contains the Siftory shell and Phase 2 local library foundation on Vite + React + TypeScript. Manual record entry, Inbox/All Saved, local IndexedDB storage, organization, keyword search, and hash navigation are implemented. Batch imports, extraction, AI analysis, backup/restore, and research workflows are not. Do not describe target architecture as existing implementation. Inspect the live code and scripts before choosing additional libraries or imposing folders.
 
 ## Product and privacy constraints
 
@@ -52,4 +52,4 @@ This repository contains a Vite + React + TypeScript app with the initial Siftor
 
 ## Implementation boundary
 
-The Siftory shell is runnable, but most product workflows are not implemented. Do not claim product features exist until implemented. Use `docs/PLAN.md` for phase order and create a focused phase plan before substantial feature work. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the product brief.
+The Siftory shell and initial local library are runnable, but most product workflows are not implemented. Do not claim product features exist until implemented. Use `docs/PLAN.md` for phase order and create a focused phase plan before substantial feature work. Use `docs/ai/CODEX_MASTER_PROMPT.md` as the product brief.

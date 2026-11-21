@@ -69,6 +69,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** Real local records can be created, viewed, edited, organized, searched, and removed; relationships survive reloads; no AI setup is required for core library use.
 
+**Current status:** Implementation complete; review gate pending. Manual entry, IndexedDB persistence, Inbox/All Saved, item detail, collections/categories/tags, keyword search, filters, sorting, and recently viewed are implemented. Build, lint, and 15 automated tests pass. Browser-based desktop/mobile and keyboard review remains outstanding because no browser surface was available.
+
 ### Phase 3 — Import system
 
 **Goal:** Bring user-owned saved material into the library safely and transparently.
@@ -125,4 +127,4 @@ Review and agree on that focused plan before substantial implementation. Complet
 
 ## First milestone
 
-Complete the Phase 1 manual viewport review. Then write and review a focused Phase 2 plan before implementing library behavior.
+Complete Phase 2's manual desktop/mobile and keyboard review. Then write and review a focused Phase 3 plan before implementing source imports.

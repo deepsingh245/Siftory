@@ -53,6 +53,7 @@ Exit criteria:
 - Search and filters work on actual stored data.
 - Collections and metadata relationships persist across refresh.
 - Core library works without AI.
+- Domain and IndexedDB repository tests cover validation, persistence, and relationship integrity.
 
 ## Phase 3 — Import system
 

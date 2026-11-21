@@ -2,7 +2,7 @@
 
 ## Architecture status
 
-This document describes the target architecture. The Vite + React + TypeScript baseline and Phase 1 shell are recorded in `docs/PROJECT_SETUP.md`. Preserve the starter conventions and inspect live code before selecting additional libraries or replacing infrastructure. The current UI has no domain state, persistence, router, or feature workflows.
+This document describes the target architecture and current implementation. The Vite + React + TypeScript baseline is in `docs/PROJECT_SETUP.md`. Phase 2 adds domain types and search/filter logic under `src/domain/`, IndexedDB schema/repositories under `src/infrastructure/persistence/`, library views under `src/features/library/`, and hash-based screen navigation under `src/app/`. Preserve the starter conventions and inspect live code before adding libraries or replacing infrastructure. Batch imports, extraction, AI, backup/restore, and research are still future work.
 
 ## Principles
 
@@ -30,7 +30,7 @@ Use cases and domain services:
 - Export and restore data.
 
 ### Persistence
-Local repository interfaces backed by IndexedDB. Use an existing project abstraction if suitable; otherwise select a small, maintained library after audit.
+Local repository interfaces backed by IndexedDB through the `idb` promise wrapper. The Phase 2 schema is version 1 and stores saved items, collections, categories, and tags. `SavedItem` holds the many-to-many organization ID lists; deleting a label and cleaning those references occur in one transaction. Item access history is stored as `lastViewedAt`.
 
 ### Ingestion adapters
 One adapter per supported source format:

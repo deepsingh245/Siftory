@@ -4,17 +4,18 @@
 
 Your personal library for everything worth knowing.
 
-Siftory is a local-first personal knowledge library and research workspace. The initial responsive application shell and theme foundation are in place; library and research workflows are still planned.
+Siftory is a local-first personal knowledge library and research workspace. The responsive shell and initial local library are in place; source imports, extraction, AI analysis, and research remain planned.
 
 ## Development
 
-The current app is the Phase 1 shell. Navigation destinations marked “Planned” and library search are not implemented features yet.
+The current app supports manual entries, Inbox and All Saved, organization, keyword search, filters, and recently viewed items. Navigation destinations marked “Planned” are not implemented features yet.
 
 ```sh
 npm install
 npm run dev
 npm run build
 npm run lint
+npm test
 ```
 
 ## Start here

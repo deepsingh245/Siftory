@@ -1,5 +1,5 @@
 # Application source
 
-`App.tsx` is the Phase 1 Siftory shell: responsive navigation, theme switching, search entry-point placeholder, and the library's honest first-use state. Library data, import, search, processing, and research workflows are not implemented yet.
+`App.tsx` is the responsive Siftory shell. `features/library/` contains the current Inbox, All Saved, detail, organization, search, filtering, and recent-history views. `infrastructure/persistence/` stores library records in IndexedDB. Batch imports, extraction, processing, AI, backup/restore, and research are not implemented yet.
 
-The surrounding folders are architectural boundaries from `docs/ARCHITECTURE.md`. They remain planned boundaries and do not imply that persistence or feature behavior exists.
+Other folders are architectural boundaries from `docs/ARCHITECTURE.md`; they do not imply that later-phase features exist.
