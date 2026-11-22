@@ -2,7 +2,7 @@
 
 ## Current state
 
-Audited on 2026-11-20 and updated for Phase 6 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, resumable imports, local text extraction, optional ChatGPT analysis, user-provided transcript attachment for saved Instagram and YouTube items, and resumable chunked transcript analysis. Platform transcript fetching is not implemented. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20 and updated for Phase 7 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, resumable imports, local text extraction, optional ChatGPT analysis, user-provided transcript attachment for saved Instagram and YouTube items, resumable chunked transcript analysis, and library-only research with locally saved sessions. Platform transcript fetching, manual backup/restore, and external web research are not implemented. The starter pack supplied product and implementation guidance but no application source.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -17,7 +17,7 @@ The repository was initialized with Git before this task. No remote push or comm
 - Product code is organized under `src/app`, `src/domain`, `src/features/library`, and `src/infrastructure/persistence`.
 - `tests/unit` and `tests/integration` cover domain rules and the IndexedDB repository. The test runner is Vitest.
 - `src/domain/imports.ts` parses and validates import candidates locally; `src/features/import/` provides preview, duplicate review, and explicit confirmation.
-- IndexedDB schema version 6 stores the local library, source files, processing and analysis jobs, extracted text, user-provided transcripts, and versioned AI results.
+- IndexedDB schema version 7 stores the local library, source files, processing and analysis jobs, extracted text, user-provided transcripts, versioned AI results, and research sessions.
 
 ## Phase 0 audit results
 
@@ -84,6 +84,7 @@ No existing application logic was available to reuse during the Phase 0 audit. P
 │   ├── app/routes.ts                 # Native hash-based screen routes
 │   ├── domain/library.ts             # Library types, validation, and queries
 │   ├── features/library/             # Library views and data hook
+│   ├── features/research/            # Local retrieval review and cited research workspace
 │   ├── infrastructure/persistence/   # Versioned IndexedDB and repository
 │   ├── shared/                       # Planned shared UI and utilities
 │   ├── App.tsx / App.css              # Siftory shell and presentation
@@ -111,6 +112,14 @@ No existing application logic was available to reuse during the Phase 0 audit. P
 
 The Vite + React + TypeScript stack, npm, IndexedDB through `idb`, Vitest with fake-indexeddb, and native hash routes remain in use. Phase 5 selected the official Sign in with ChatGPT plan-use flow after a successful live check. See `DECISIONS.md` for the session and data boundaries.
 
+## Phase 7 implementation
+
+- Added local lexical retrieval over saved Instagram captions, user-provided transcripts, and extracted local text; user notes are excluded.
+- Added a Research route with excerpt review, six-source selection, explicit ChatGPT-plan consent, one request per question, and local session history.
+- Added server-side validation for reviewed source bounds and exact citation quotes. Transcript timestamps are returned only when the quote belongs to a supplied timed segment.
+- Added IndexedDB schema version 7 with source snapshots. Source edits mark citations historical; source deletion removes the saved excerpts and quote text.
+- Build, lint, and all 69 automated tests pass. Manual browser, narrow-screen, keyboard, and screen-reader review remains open because no browser surface was available in the implementation environment.
+
 ## Next milestone
 
-The Phase 5 batch and import follow-up is implemented. Phase 6 now supports locally attaching user-provided `.txt`, SRT, and WebVTT transcripts to saved Instagram and YouTube items, including timed subtitle evidence, bounded resumable analysis, and local provenance. It does not fetch platform captions; the official YouTube captions download route requires edit permission. See the [Phase 6 plan](phases/PHASE-6-SOURCE-COVERAGE.md) for implementation status and remaining review work, alongside the [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md) and its [batch follow-up](phases/PHASE-5-BATCH-ANALYSIS.md).
+Phase 7's library-only research implementation is in place. Next, close the outstanding Phase 6 and Phase 7 manual UI/accessibility reviews, then plan Phase 8 reliability and release readiness. Manual export/restore remains a product gap. See the [Phase 7 plan](phases/PHASE-7-RESEARCH-WORKSPACE.md), [Phase 6 plan](phases/PHASE-6-SOURCE-COVERAGE.md), and [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md).

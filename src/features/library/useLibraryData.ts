@@ -4,12 +4,14 @@ import type { Analysis } from '../../domain/analysis'
 import type { AnalysisJob, AnalysisReview } from '../../domain/analysisQueue'
 import type { ExtractedContent, ProcessingCapability, ProcessingJob } from '../../domain/processing'
 import type { TranscriptContent } from '../../domain/transcripts'
+import type { ResearchSession, ResearchReview } from '../../domain/research'
 import { getProcessingCapability } from '../../domain/processing'
 import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
 import { queueProcessingItem, retryProcessingJob, runProcessingJob, runQueuedProcessing } from '../processing/processingService'
 import { prepareAnalysisReview, queueReviewedAnalysis, runReviewedAnalysis } from '../analysis/analysisQueueService'
 import type { AnalysisRun } from '../analysis/analysisQueueService'
 import { chatgpt } from '../analysis/chatgptClient'
+import { prepareResearchReview, submitResearch } from '../research/researchService'
 
 const repository = createLibraryRepository(undefined, () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('siftory:database-blocked'))
@@ -34,11 +36,16 @@ export type LibraryData = {
   getExtractedContent: (id: string) => Promise<ExtractedContent | undefined>
   getAnalyses: (id: string) => Promise<Analysis[]>
   getTranscript: (id: string) => Promise<TranscriptContent | undefined>
+  getResearchSessions: () => Promise<ResearchSession[]>
+  getResearchSession: (id: string) => Promise<ResearchSession | undefined>
+  prepareResearchReview: (question: string, model: string) => Promise<ResearchReview>
   prepareAnalysisReview: (ids: string[], model: string, jobs?: AnalysisJob[]) => Promise<AnalysisReview>
   actions: {
     saveItem: (item: SavedItem) => Promise<void>
     attachTranscript: (transcript: TranscriptContent) => Promise<void>
     removeTranscript: (itemId: string) => Promise<void>
+    saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => Promise<ResearchSession>
+    deleteResearchSession: (id: string) => Promise<void>
     applySuggestedCategory: (id: string, name: string) => Promise<void>
     saveImportedBatch: ReturnType<typeof createLibraryRepository>['saveImportedBatch']
     queueAnalysis: (review: AnalysisReview) => Promise<number>
@@ -144,6 +151,9 @@ export function useLibraryData(): LibraryData {
   const getExtractedContent = useCallback((id: string) => repository.getExtractedContent(id), [])
   const getAnalyses = useCallback((id: string) => repository.getAnalyses(id), [])
   const getTranscript = useCallback((id: string) => repository.getTranscript(id), [])
+  const getResearchSessions = useCallback(() => repository.getResearchSessions(), [])
+  const getResearchSession = useCallback((id: string) => repository.getResearchSession(id), [])
+  const reviewResearch = useCallback((question: string, model: string) => prepareResearchReview(repository, question, model), [])
   const reviewAnalysis = useCallback((ids: string[], model: string, queuedJobs?: AnalysisJob[]) => prepareAnalysisReview(repository, ids, model, queuedJobs), [])
   const queueAnalysis = useCallback(async (review: AnalysisReview) => {
     const count = await queueReviewedAnalysis(repository, review)
@@ -187,6 +197,8 @@ export function useLibraryData(): LibraryData {
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
     attachTranscript: (transcript: TranscriptContent) => perform(() => repository.attachTranscript(transcript)),
     removeTranscript: (itemId: string) => perform(() => repository.removeTranscript(itemId)),
+    saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => submitResearch(repository, review, selectedIds, connectionId, chatgpt),
+    deleteResearchSession: (id: string) => perform(() => repository.deleteResearchSession(id)),
     applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),
     saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[], duplicates?: ReadonlySet<string>) => perform(() => repository.saveImportedBatch(items, files, duplicates)),
     queueAnalysis,
@@ -221,5 +233,5 @@ export function useLibraryData(): LibraryData {
     deleteTag: (id: string) => perform(() => repository.deleteTag(id)),
   }), [perform, refresh, queueAnalysis, startAnalysis, refreshAnalysisJobs])
 
-  return { items, collections, categories, tags, jobs, analysisJobs, analysisRunning, analysisMessage, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, getTranscript, prepareAnalysisReview: reviewAnalysis, getProcessingCapability: getCapability, actions }
+  return { items, collections, categories, tags, jobs, analysisJobs, analysisRunning, analysisMessage, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, getTranscript, getResearchSessions, getResearchSession, prepareResearchReview: reviewResearch, prepareAnalysisReview: reviewAnalysis, getProcessingCapability: getCapability, actions }
 }

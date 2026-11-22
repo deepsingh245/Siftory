@@ -1,5 +1,6 @@
 export type AppRoute =
   | { page: 'library' | 'inbox' | 'recent' | 'collections' | 'categories' | 'tags' | 'import' | 'queue' | 'settings' }
+  | { page: 'research'; id?: string }
   | { page: 'item' | 'collection' | 'category' | 'tag'; id: string }
 
 export function parseRoute(hash: string): AppRoute {
@@ -16,6 +17,7 @@ export function parseRoute(hash: string): AppRoute {
     return { page }
   }
   if (page === 'item' && id) return { page: 'item', id }
+  if (page === 'research') return id ? { page: 'research', id } : { page: 'research' }
   if (page === 'collection' && id) return { page: 'collection', id }
   if (page === 'category' && id) return { page: 'category', id }
   if (page === 'tag' && id) return { page: 'tag', id }
@@ -23,5 +25,5 @@ export function parseRoute(hash: string): AppRoute {
 }
 
 export function routeHref(route: AppRoute): string {
-  return `#/${route.page}${'id' in route ? `/${encodeURIComponent(route.id)}` : ''}`
+  return `#/${route.page}${'id' in route && route.id ? `/${encodeURIComponent(route.id)}` : ''}`
 }

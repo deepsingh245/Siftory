@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '../../domain/analysis'
+import type { ResearchAnswer, ResearchContextSource } from '../../domain/research'
 
 export type ModelOption = { slug: string; label: string }
 
@@ -35,4 +36,8 @@ export const chatgpt = {
   connect: () => api<{ authorizationUrl: string }>('connect', 'POST'),
   disconnect: () => api<ChatGptStatus>('disconnect', 'POST'),
   analyze: (model: string, text: string, connectionId: string) => api<{ result: AnalysisResult }>('analyze', 'POST', { model, text, connectionId, consent: true }),
+  research: (model: string, question: string, sources: ResearchContextSource[], connectionId: string) => api<{ answer: ResearchAnswer }>('research', 'POST', {
+    model, question, connectionId, consent: true,
+    sources: sources.map(({ id, title, kind, excerpt, timedSegments }) => ({ id, title, kind, excerpt, timedSegments })),
+  }),
 }

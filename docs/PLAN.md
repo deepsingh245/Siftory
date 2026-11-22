@@ -119,9 +119,13 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Goal:** Answer questions from saved knowledge first, then expand to external sources only when explicitly supported.
 
-**Work:** Build Library Search with saved-item references and citations. Add Library + Web and Deep Research only after the provider, consent, sourcing, and freshness behavior is decided. Persist research sessions and their references.
+**Work:** Start with library-only retrieval and answers, saved-item citations, and locally persisted research sessions. Add Library + Web and Deep Research only after the provider, consent, sourcing, and freshness behavior are decided.
 
 **Gate:** Saved evidence, external evidence, and model interpretation are distinguishable; citations resolve to actual sources; insufficient or conflicting evidence is represented honestly.
+
+**Implementation status:** Library-only local retrieval, reviewed ChatGPT-plan requests, cited answers, IndexedDB research sessions, and source lifecycle handling are implemented. Build, lint, and automated tests pass. Manual browser, narrow-screen, keyboard, and screen-reader review remains open; Phase 6's manual review is also still open.
+
+**Focused plan:** [Phase 7 research workspace](phases/PHASE-7-RESEARCH-WORKSPACE.md). External web research remains out of scope.
 
 ### Phase 8 — Reliability and release readiness
 
@@ -146,4 +150,4 @@ Review and agree on that focused plan before substantial implementation. Complet
 
 ## Current milestone
 
-The Phase 5 batch and import follow-up is implemented. The next milestone is Phase 6 source coverage: user-provided content and permitted transcript paths for Instagram and YouTube. See the [Phase 5 follow-up plan](phases/PHASE-5-BATCH-ANALYSIS.md) for verification evidence and the [Phase 6 focused plan](phases/PHASE-6-SOURCE-COVERAGE.md) before coding begins.
+Phase 6 transcript support is committed as `d414c7f`. Its automated checks pass; manual desktop/mobile and keyboard review remains before its gate closes. Phase 7 planning is documented in [the Phase 7 focused plan](phases/PHASE-7-RESEARCH-WORKSPACE.md); implementation must wait for the Phase 6 review and the listed research decisions.

@@ -121,14 +121,17 @@ Search modes:
 3. Deep Research: broader research and comparisons.
 
 Research requirements:
-- Retrieve relevant saved items.
+- Retrieve relevant saved captions, user-provided transcripts, and locally extracted text on-device. Exclude user notes.
+- Before each provider request, show the exact question, model, account, selected excerpts, source count, and request count; require explicit consent.
+- Bound the initial request to six sources, 1,500 characters per excerpt, 10,000 source characters, and one request.
 - Cite original saved items.
 - Cite external sources when used.
 - Include timestamps when supported.
 - Distinguish evidence from interpretation.
+- A supported answer must cite its summary and each claim with exact reviewed quotes. An insufficient answer has no claims or summary citations and explains the evidence gap.
 - Identify conflicting or outdated information where evidence supports it.
 - State when evidence is insufficient.
-- Save research sessions and references.
+- Save research sessions and references in IndexedDB. Preserve historical quote snapshots when sources change; remove saved excerpt and quote text when a source is deleted.
 - Never present fabricated citations or unsupported freshness claims.
 
 ## 9. Data portability

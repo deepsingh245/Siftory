@@ -5,6 +5,8 @@ import { analysisAttemptLeaseMs, maxAnalysisBatchSize } from '../../domain/analy
 import type { AnalysisJob } from '../../domain/analysisQueue'
 import type { TranscriptContent } from '../../domain/transcripts'
 import { transcriptAnalysisProvenance } from '../../domain/transcriptAnalysis'
+import type { ResearchRawSourceRecord, ResearchSession, ResearchSourceKind } from '../../domain/research'
+import { markResearchSourcesUnavailable } from '../../domain/research'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import { MAX_PROCESSING_SOURCE_BYTES, TEXT_EXTRACTION_VERSION } from '../../domain/processing'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
@@ -17,6 +19,21 @@ export type LibraryRepository = ReturnType<typeof createLibraryRepository>
 type ImportReviewResult = { savedIds: string[]; duplicates: { itemId: string; existing: SavedItem }[] }
 const analysisStores = ['savedItems', 'extractedContent', 'analyses', 'analysisJobs', 'transcripts'] as const
 type AnalysisTransaction = IDBPTransaction<LibraryDatabase, typeof analysisStores, 'readwrite'>
+type ResearchSessionStore = {
+  getAll(): Promise<ResearchSession[]>
+  put(value: ResearchSession): Promise<IDBValidKey>
+}
+
+async function markSessionsForSourceChange(
+  store: ResearchSessionStore,
+  savedItemId: string,
+  kind: ResearchSourceKind | undefined,
+  status: 'changed' | 'deleted',
+) {
+  const sessions = await store.getAll()
+  const at = new Date().toISOString()
+  await Promise.all(sessions.map((session) => store.put(markResearchSourcesUnavailable(session, savedItemId, kind, status, at))))
+}
 
 export function createLibraryRepository(name = databaseName, onBlocked?: () => void) {
   let connectionPromise: Promise<IDBPDatabase<LibraryDatabase>> | undefined
@@ -158,18 +175,85 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       return (await connection()).get('transcripts', id)
     },
 
+    async getResearchSourceRecords(): Promise<ResearchRawSourceRecord[]> {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'transcripts', 'extractedContent'], 'readonly')
+      const items = await tx.objectStore('savedItems').getAll()
+      const records: ResearchRawSourceRecord[] = []
+      for (const item of items) {
+        if (item.sourceType === 'instagram' && item.description?.trim()) {
+          records.push({ savedItemId: item.id, title: item.title || item.url || 'Instagram item', kind: 'caption', text: item.description.trim(), itemUpdatedAt: item.updatedAt })
+        }
+        if (item.transcriptId) {
+          const transcript = await tx.objectStore('transcripts').get(item.transcriptId)
+          if (transcript?.savedItemId === item.id && transcript.text.trim()) {
+            records.push({ savedItemId: item.id, title: item.title || item.url || 'Saved media', kind: 'transcript', text: transcript.text, segments: transcript.segments, itemUpdatedAt: item.updatedAt, storageId: transcript.id })
+          }
+        }
+        if (item.sourceType === 'text' && item.sourceFileId && item.sourceFingerprint) {
+          const extracted = await tx.objectStore('extractedContent').index('by-source-key').get([item.id, item.sourceFingerprint, TEXT_EXTRACTION_VERSION])
+          if (extracted?.text.trim()) records.push({ savedItemId: item.id, title: item.title || 'Text file', kind: 'extracted-text', text: extracted.text, itemUpdatedAt: item.updatedAt, storageId: extracted.id })
+        }
+      }
+      await tx.done
+      return records
+    },
+
+    async getResearchSessions() {
+      return (await connection()).getAllFromIndex('researchSessions', 'by-updated').then((sessions) => sessions.reverse())
+    },
+
+    async getResearchSession(id: string) {
+      return (await connection()).get('researchSessions', id)
+    },
+
+    async saveResearchSession(session: ResearchSession) {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'transcripts', 'extractedContent', 'researchSessions'], 'readwrite')
+      try {
+        for (const source of session.sources) {
+          const item = await tx.objectStore('savedItems').get(source.savedItemId)
+          if (!item || item.updatedAt !== source.itemUpdatedAt) throw new Error('A selected source changed or was removed while the answer was being prepared. Review sources again before saving.')
+          if (source.kind === 'transcript') {
+            const transcript = source.storageId ? await tx.objectStore('transcripts').get(source.storageId) : undefined
+            if (!transcript || item.transcriptId !== transcript.id || transcript.savedItemId !== item.id) throw new Error('A selected transcript changed or was removed. Review sources again before saving.')
+          } else if (source.kind === 'extracted-text') {
+            const extracted = source.storageId ? await tx.objectStore('extractedContent').get(source.storageId) : undefined
+            if (!extracted || extracted.savedItemId !== item.id || extracted.sourceFingerprint !== item.sourceFingerprint) throw new Error('A selected text extraction changed or was removed. Review sources again before saving.')
+          } else if (item.description?.trim() !== source.excerpt && !item.description?.includes(source.excerpt)) {
+            throw new Error('A selected caption changed while the answer was being prepared. Review sources again before saving.')
+          }
+        }
+        await tx.objectStore('researchSessions').put(session)
+        await tx.done
+      } catch (error) {
+        tx.abort()
+        await tx.done.catch(() => undefined)
+        throw error
+      }
+    },
+
+    async deleteResearchSession(id: string) {
+      const db = await connection()
+      const tx = db.transaction('researchSessions', 'readwrite')
+      await tx.store.delete(id)
+      await tx.done
+    },
+
     async attachTranscript(transcript: TranscriptContent) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs', 'researchSessions'], 'readwrite')
       try {
         const items = tx.objectStore('savedItems')
         const item = await items.get(transcript.savedItemId)
         if (!item || !['youtube', 'instagram'].includes(item.sourceType)) throw new Error('Transcripts can only be attached to saved YouTube or Instagram items.')
         const oldId = item.transcriptId
+        const oldTranscript = oldId ? await tx.objectStore('transcripts').get(oldId) : undefined
         if (oldId && oldId !== transcript.id) await tx.objectStore('transcripts').delete(oldId)
         await tx.objectStore('transcripts').put(transcript)
         await items.put({ ...item, transcriptId: transcript.id, updatedAt: new Date().toISOString() })
-        if (oldId && oldId !== transcript.id) {
+        if (oldId && (!oldTranscript || oldTranscript.fingerprint !== transcript.fingerprint)) {
+          await markSessionsForSourceChange(tx.objectStore('researchSessions'), item.id, 'transcript', 'changed')
           const analyses = await tx.objectStore('analyses').index('by-item').getAll(item.id)
           const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(item.id)
           await Promise.all([
@@ -183,9 +267,12 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async removeTranscript(itemId: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs', 'researchSessions'], 'readwrite')
       const item = await tx.objectStore('savedItems').get(itemId)
-      if (item?.transcriptId) await tx.objectStore('transcripts').delete(item.transcriptId)
+      if (item?.transcriptId) {
+        await tx.objectStore('transcripts').delete(item.transcriptId)
+        await markSessionsForSourceChange(tx.objectStore('researchSessions'), itemId, 'transcript', 'deleted')
+      }
       if (item) await tx.objectStore('savedItems').put({ ...item, transcriptId: undefined, updatedAt: new Date().toISOString() })
       const analyses = await tx.objectStore('analyses').index('by-item').getAll(itemId)
       const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(itemId)
@@ -548,8 +635,16 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async saveItem(item: SavedItem) {
       const db = await connection()
-      const tx = db.transaction('savedItems', 'readwrite')
-      await tx.store.put(item)
+      const tx = db.transaction(['savedItems', 'researchSessions'], 'readwrite')
+      const store = tx.objectStore('savedItems')
+      const previous = await store.get(item.id)
+      await store.put(item)
+      if (previous && previous.description !== item.description) {
+        await markSessionsForSourceChange(tx.objectStore('researchSessions'), item.id, 'caption', 'changed')
+      }
+      if (previous && (previous.sourceFingerprint !== item.sourceFingerprint || previous.sourceFileId !== item.sourceFileId)) {
+        await markSessionsForSourceChange(tx.objectStore('researchSessions'), item.id, 'extracted-text', 'changed')
+      }
       await tx.done
     },
 
@@ -563,12 +658,13 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses', 'analysisJobs', 'transcripts'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses', 'analysisJobs', 'transcripts', 'researchSessions'], 'readwrite')
       const jobs = await tx.objectStore('processingJobs').index('by-item').getAllKeys(id)
       const contents = await tx.objectStore('extractedContent').index('by-item').getAllKeys(id)
       const analyses = await tx.objectStore('analyses').index('by-item').getAllKeys(id)
       const analysisJobs = await tx.objectStore('analysisJobs').index('by-item').getAllKeys(id)
       const item = await tx.objectStore('savedItems').get(id)
+      await markSessionsForSourceChange(tx.objectStore('researchSessions'), id, undefined, 'deleted')
       await tx.objectStore('savedItems').delete(id)
       await tx.objectStore('sourceFiles').delete(id)
       if (item?.transcriptId) await tx.objectStore('transcripts').delete(item.transcriptId)

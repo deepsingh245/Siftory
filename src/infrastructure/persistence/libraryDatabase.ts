@@ -5,9 +5,10 @@ import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../do
 import type { Analysis } from '../../domain/analysis'
 import type { AnalysisJob, AnalysisJobStatus } from '../../domain/analysisQueue'
 import type { TranscriptContent } from '../../domain/transcripts'
+import type { ResearchSession } from '../../domain/research'
 
 export const databaseName = 'siftory-library'
-export const databaseVersion = 6
+export const databaseVersion = 7
 
 export interface LibraryDatabase extends DBSchema {
   savedItems: {
@@ -78,6 +79,11 @@ export interface LibraryDatabase extends DBSchema {
     value: TranscriptContent
     indexes: { 'by-item': string }
   }
+  researchSessions: {
+    key: string
+    value: ResearchSession
+    indexes: { 'by-created': string; 'by-updated': string }
+  }
 }
 
 export type LibraryDatabaseConnection = IDBPDatabase<LibraryDatabase>
@@ -134,6 +140,11 @@ export function openLibraryDatabase(name = databaseName, onBlocked?: () => void)
       }
       if (oldVersion < 6) {
         db.createObjectStore('transcripts', { keyPath: 'id' }).createIndex('by-item', 'savedItemId')
+      }
+      if (oldVersion < 7) {
+        const sessions = db.createObjectStore('researchSessions', { keyPath: 'id' })
+        sessions.createIndex('by-created', 'createdAt')
+        sessions.createIndex('by-updated', 'updatedAt')
       }
     },
     blocked() {

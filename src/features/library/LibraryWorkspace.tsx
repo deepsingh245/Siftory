@@ -33,6 +33,7 @@ import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
 import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
 import { TranscriptPanel } from './TranscriptPanel'
 import { identifyYouTubeUrl } from '../../domain/youtube'
+import { ResearchWorkspace } from '../research/ResearchWorkspace'
 import './library.css'
 
 type Props = {
@@ -45,6 +46,7 @@ export function LibraryWorkspace({ route, data, query }: Props) {
   const [filters, setFilters] = useState<Omit<ItemFilters, 'query' | 'status'>>({ sort: 'recent' })
 
   if (route.page === 'settings') return <ChatGptSettings />
+  if (route.page === 'research') return <ResearchWorkspace sessionId={route.id} data={data} />
 
   if (data.loading) {
     return <div className="library-state" role="status">Opening your local library...</div>

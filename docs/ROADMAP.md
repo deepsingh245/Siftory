@@ -133,15 +133,18 @@ Implementation status: User-provided transcript artifacts, local YouTube URL rec
 Tasks:
 - Library-only retrieval and answers.
 - Citation links to saved items.
-- Optional external web research adapter.
 - Research session persistence.
-- Comparison and outdated-information handling.
+- Source comparison and evidence-supported conflict reporting.
 
 Exit criteria:
 - Each claim is traceable where possible.
 - Library evidence and external evidence are distinguishable.
 - Insufficient evidence is reported honestly.
 - No fabricated citations.
+
+Implementation status: Library-only local retrieval, reviewed ChatGPT-plan requests, cited answers, local session persistence, and source lifecycle handling are implemented. Build, lint, and automated tests pass. Manual browser, narrow-screen, keyboard, and screen-reader review remains open. External web modes remain out of scope until their sourcing and consent rules are decided.
+
+Focused plan: [Phase 7 research workspace](phases/PHASE-7-RESEARCH-WORKSPACE.md).
 
 ## Phase 8 — Reliability and release readiness
 

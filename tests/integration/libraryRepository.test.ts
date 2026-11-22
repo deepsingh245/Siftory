@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { deleteDB, openDB } from 'idb'
 import type { Category, Collection, SavedItem, Tag } from '../../src/domain/library'
 import type { Analysis } from '../../src/domain/analysis'
+import type { ResearchSession } from '../../src/domain/research'
 import { createTranscriptContent, parseTranscript } from '../../src/domain/transcripts'
 import { createSavedItem } from '../../src/domain/library'
 import { parseSourceFile, toImportedItems } from '../../src/domain/imports'
@@ -85,7 +86,7 @@ describe('local library database', () => {
 
     const db = await openLibraryDatabase(name)
     expect(db.version).toBe(databaseVersion)
-    expect([...db.objectStoreNames]).toEqual(['analyses', 'analysisJobs', 'categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags', 'transcripts'])
+    expect([...db.objectStoreNames]).toEqual(['analyses', 'analysisJobs', 'categories', 'collections', 'extractedContent', 'processingJobs', 'researchSessions', 'savedItems', 'sourceFiles', 'tags', 'transcripts'])
     db.close()
   })
 
@@ -95,10 +96,35 @@ describe('local library database', () => {
     await legacy.add('savedItems', item)
     legacy.close()
     const upgraded = await openLibraryDatabase(name)
-    expect(upgraded.version).toBe(6)
+    expect(upgraded.version).toBe(7)
     expect([...upgraded.objectStoreNames]).toContain('transcripts')
+    expect([...upgraded.objectStoreNames]).toContain('researchSessions')
     expect(await upgraded.get('savedItems', item.id)).toEqual(item)
     upgraded.close()
+  })
+
+  it('persists local research sessions and marks source evidence changed or deleted', async () => {
+    const item = createSavedItem({ title: 'Caption', sourceType: 'instagram', contentType: 'post', description: 'Saved source evidence stays local.' }, undefined, 'research-source')
+    await repository.saveItem(item)
+    const sourceId = 'd'.repeat(64)
+    const session: ResearchSession = {
+      id: 'research-session', version: '1', question: 'What does the caption say?', model: 'gpt-6-sol', provider: 'chatgpt-plan',
+      createdAt: item.createdAt, updatedAt: item.createdAt,
+      answer: { evidenceStatus: 'supported', summary: { text: 'It contains evidence.', citations: [{ sourceId, quote: 'Saved source evidence', status: 'current' }] }, claims: [], limitations: [] },
+      sources: [{ id: sourceId, savedItemId: item.id, title: item.title, kind: 'caption', fingerprint: 'fingerprint', excerpt: 'Saved source evidence stays local.', itemUpdatedAt: item.updatedAt, status: 'current' }],
+    }
+    await repository.saveResearchSession(session)
+    expect(await repository.getResearchSession(session.id)).toEqual(session)
+
+    await repository.saveItem({ ...item, description: 'The caption has changed.', updatedAt: '2026-11-22T12:00:00.000Z' })
+    expect(await repository.getResearchSession(session.id)).toMatchObject({ sources: [{ status: 'changed', excerpt: 'Saved source evidence stays local.' }], answer: { summary: { citations: [{ status: 'changed', quote: 'Saved source evidence' }] } } })
+
+    await repository.deleteItem(item.id)
+    expect(await repository.getResearchSession(session.id)).toMatchObject({
+      sources: [{ status: 'deleted', excerpt: '' }],
+      answer: { summary: { citations: [{ status: 'deleted' }] } },
+    })
+    expect((await repository.getResearchSession(session.id))?.answer.summary.citations[0].quote).toBeUndefined()
   })
 
   it("records recent views without changing the item's content update timestamp", async () => {

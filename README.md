@@ -4,7 +4,7 @@
 
 Your personal library for everything worth knowing.
 
-Siftory is a local-first personal knowledge library and research workspace. The responsive shell, local library, and review-before-save imports are in place. Extraction, AI analysis, and research remain planned.
+Siftory is a local-first personal knowledge library and research workspace. The responsive shell, local library, review-before-save imports, local text extraction, ChatGPT-plan analysis, user-provided transcripts, and library-only research are implemented. Manual backup/restore and external web research remain planned.
 
 ## Development
 

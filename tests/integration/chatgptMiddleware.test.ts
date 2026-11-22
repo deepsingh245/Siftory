@@ -76,4 +76,37 @@ describe('local ChatGPT routes', () => {
     expect(await (await post('disconnect', cookie)).json()).toEqual({ state: 'disconnected' })
     expect((await post('analyze', cookie, { text: caption, model: 'gpt-6-sol', consent: true, connectionId: connectionState.connectionId })).status).toBe(401)
   })
+
+  it('sends only reviewed library excerpts and rejects fabricated research quotes', async () => {
+    const connection = await post('connect')
+    const cookie = connection.headers.get('set-cookie')!.split(';', 1)[0]
+    const status = await fetch(`${origin}/api/ai/status`, { headers: { 'X-Siftory-Request': '1', Cookie: cookie } })
+    const connected = await status.json() as { connectionId: string }
+    const id = 'a'.repeat(64)
+    const excerpt = 'A saved source describes local search.'
+    vi.mocked(generatePlanText).mockResolvedValue(JSON.stringify({
+      evidenceStatus: 'supported',
+      summary: { text: 'The saved source describes local search.', citations: [{ sourceId: id, quote: 'describes local search' }] },
+      claims: [{ text: 'Local search is described.', citations: [{ sourceId: id, quote: 'A saved source describes local search.' }] }],
+      limitations: [],
+    }))
+    const answer = await post('research', cookie, {
+      model: 'gpt-6-sol', consent: true, connectionId: connected.connectionId, question: 'What does the source say?',
+      sources: [{ id, title: 'Saved note', kind: 'caption', excerpt }], notes: 'must never be sent',
+    })
+    expect(answer.status).toBe(200)
+    expect(await answer.json()).toMatchObject({ answer: { claims: [{ citations: [{ sourceId: id }] }] } })
+    expect(generatePlanText).toHaveBeenCalledWith('synthetic-secret', 'gpt-6-sol', expect.stringContaining(excerpt), expect.any(String), expect.any(AbortSignal))
+    expect(generatePlanText.mock.calls.at(-1)?.[2]).not.toContain('must never be sent')
+
+    vi.mocked(generatePlanText).mockResolvedValue(JSON.stringify({
+      evidenceStatus: 'supported',
+      summary: { text: 'Unsupported quote.', citations: [{ sourceId: id, quote: 'invented evidence' }] }, claims: [], limitations: [],
+    }))
+    const invalid = await post('research', cookie, {
+      model: 'gpt-6-sol', consent: true, connectionId: connected.connectionId, question: 'What does the source say?',
+      sources: [{ id, title: 'Saved note', kind: 'caption', excerpt }],
+    })
+    expect(invalid.status).toBe(502)
+  })
 })

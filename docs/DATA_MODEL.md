@@ -1,6 +1,6 @@
 ﻿# Siftory Data Model
 
-This document describes the conceptual model. The library, imports, jobs, extracted text, transcript artifacts, individual analyses, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 6. Research sessions remain planned.
+This document describes the conceptual model and current implementation. The library, imports, jobs, extracted text, transcript artifacts, individual analyses, research sessions, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 7.
 
 ## SavedItem
 
@@ -138,16 +138,14 @@ Statuses: Queued, Extracting, Completed, Failed, Needs Attention, Skipped. The P
 
 ## ResearchSession
 
+Implemented in IndexedDB schema version 7 for library-only research. The session stores the question, model/provider, timestamps, structured answer (including supported/insufficient evidence status), and reviewed source snapshots. Each snapshot includes source ID, saved item ID, source kind, content fingerprint, excerpt, source update timestamp, optional transcript/extraction record ID, and lifecycle status (`current`, `changed`, or `deleted`). User notes and provider credentials are not stored in the session. On source edit, the quote snapshot remains and is marked historical; on source deletion, the excerpt and citation quote are removed.
+
 - `id`
 - `question`
-- `mode`: library, library_web, deep_research.
 - `createdAt`
 - `updatedAt`
 - `answer`
-- `savedItemReferences`
-- `externalReferences`
-- `limitations`
-- `providerMetadata`
+- `model`, `provider` (`chatgpt-plan`), `answer`, and `sources`
 
 ## Relationships
 
@@ -157,7 +155,7 @@ Statuses: Queued, Extracting, Completed, Failed, Needs Attention, Skipped. The P
 - SavedItem has zero or many Categories and Tags.
 - SavedItem may reference one locally stored `SourceFile` by `sourceFileId`.
 - SavedItem has zero or many ProcessingJobs over time.
-- ResearchSession references zero or many SavedItems and external sources.
+- ResearchSession references zero or many SavedItems through source snapshots. External sources are not part of the initial implementation.
 
 ## Deduplication
 
