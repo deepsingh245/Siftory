@@ -7,6 +7,7 @@ import { prepareAnalysisReview, runReviewedAnalysis } from '../../src/features/a
 import { ChatGptRequestError } from '../../src/features/analysis/chatgptClient'
 import { createLibraryRepository } from '../../src/infrastructure/persistence/libraryRepository'
 import { databaseName } from '../../src/infrastructure/persistence/libraryDatabase'
+import { createTranscriptContent, parseTranscript } from '../../src/domain/transcripts'
 import type { chatgpt } from '../../src/features/analysis/chatgptClient'
 
 let name: string
@@ -126,5 +127,45 @@ describe('persistent AI analysis queue', () => {
     const claim = await repository.claimAnalysisJob(review.items[0].job!.id, review.items[0].input!)
     expect(claim.state).toBe('changed')
     expect(await repository.getAnalysisJobs()).toEqual(expect.arrayContaining([expect.objectContaining({ status: 'needs-attention', message: expect.stringContaining('changed') })]))
+  })
+
+  it('analyzes all transcript chunks, persists partial progress, and resumes without repeating completed steps', async () => {
+    const item = await addCaption('long-transcript', 'Original Instagram caption stays intact.')
+    const transcriptText = `${'A source sentence with clear evidence. '.repeat(500)}\n${'Another source sentence for later chunks. '.repeat(500)}`
+    const transcript = await createTranscriptContent(item.id, parseTranscript(transcriptText, 'text'), 'pasted', { pastedText: transcriptText })
+    await repository.attachTranscript(transcript)
+    const review = await prepareAnalysisReview(repository, [item.id], 'gpt-6-sol')
+    expect(review.items[0].requestCount).toBeGreaterThan(1)
+    expect(review.items[0].input?.kind).toBe('transcript')
+    expect((await repository.getItem(item.id))?.description).toBe('Original Instagram caption stays intact.')
+    await repository.enqueueAnalysisJobs(review.items.map((entry) => entry.job!))
+
+    let failOnMerge = true
+    const provider = {
+      status: vi.fn(async () => ({ state: 'connected', connectionId: 'current', models: [] } as const)),
+      analyze: vi.fn(async (_model: string, text: string, _connectionId: string) => {
+        if (failOnMerge && text.startsWith('Combine these adjacent')) throw new ChatGptRequestError('Temporary limit', 429)
+        const evidence = text.startsWith('Combine these adjacent')
+          ? text.split('LEFT ANALYSIS\nSummary: ')[1]?.split('\nEvidence: ')[1]?.split('\n')[0] ?? 'missing evidence'
+          : text.slice(0, 40)
+        return { result: { summary: { text: 'A transcript summary.', evidence }, points: [], categories: [], mentions: [] } }
+      }),
+    } as unknown as Pick<typeof chatgpt, 'status' | 'analyze'>
+
+    const first = await runReviewedAnalysis(repository, review, 'current', provider, async () => undefined)
+    expect(first.message).toContain('Temporary limit')
+    const interrupted = (await repository.getAnalysisJobs())[0]
+    const completedBeforeRetry = interrupted.completedSteps?.length ?? 0
+    expect(completedBeforeRetry).toBeGreaterThan(1)
+    failOnMerge = false
+    await repository.setAnalysisJobQueueState(interrupted.id, 'queued')
+    const queued = await repository.getAnalysisJobs()
+    const resumed = await prepareAnalysisReview(repository, [], 'gpt-6-sol', queued)
+    const callsBeforeRetry = provider.analyze.mock.calls.length
+    const second = await runReviewedAnalysis(repository, resumed, 'current', provider, async () => undefined)
+    expect(second.completed).toHaveLength(1)
+    expect(provider.analyze.mock.calls.length - callsBeforeRetry).toBe(review.items[0].requestCount! - completedBeforeRetry)
+    expect((await repository.getAnalysisJobs())[0].status).toBe('completed')
+    expect((await repository.getAnalyses(item.id))[0].kind).toBe('transcript')
   })
 })

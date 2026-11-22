@@ -3,6 +3,7 @@ import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../
 import type { Analysis } from '../../domain/analysis'
 import type { AnalysisJob, AnalysisReview } from '../../domain/analysisQueue'
 import type { ExtractedContent, ProcessingCapability, ProcessingJob } from '../../domain/processing'
+import type { TranscriptContent } from '../../domain/transcripts'
 import { getProcessingCapability } from '../../domain/processing'
 import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
 import { queueProcessingItem, retryProcessingJob, runProcessingJob, runQueuedProcessing } from '../processing/processingService'
@@ -32,9 +33,12 @@ export type LibraryData = {
   getProcessingCapability: (item: SavedItem) => Promise<ProcessingCapability>
   getExtractedContent: (id: string) => Promise<ExtractedContent | undefined>
   getAnalyses: (id: string) => Promise<Analysis[]>
+  getTranscript: (id: string) => Promise<TranscriptContent | undefined>
   prepareAnalysisReview: (ids: string[], model: string, jobs?: AnalysisJob[]) => Promise<AnalysisReview>
   actions: {
     saveItem: (item: SavedItem) => Promise<void>
+    attachTranscript: (transcript: TranscriptContent) => Promise<void>
+    removeTranscript: (itemId: string) => Promise<void>
     applySuggestedCategory: (id: string, name: string) => Promise<void>
     saveImportedBatch: ReturnType<typeof createLibraryRepository>['saveImportedBatch']
     queueAnalysis: (review: AnalysisReview) => Promise<number>
@@ -139,6 +143,7 @@ export function useLibraryData(): LibraryData {
   const getSourceFile = useCallback((savedItemId: string) => repository.getSourceFile(savedItemId), [])
   const getExtractedContent = useCallback((id: string) => repository.getExtractedContent(id), [])
   const getAnalyses = useCallback((id: string) => repository.getAnalyses(id), [])
+  const getTranscript = useCallback((id: string) => repository.getTranscript(id), [])
   const reviewAnalysis = useCallback((ids: string[], model: string, queuedJobs?: AnalysisJob[]) => prepareAnalysisReview(repository, ids, model, queuedJobs), [])
   const queueAnalysis = useCallback(async (review: AnalysisReview) => {
     const count = await queueReviewedAnalysis(repository, review)
@@ -180,6 +185,8 @@ export function useLibraryData(): LibraryData {
   }, [])
   const actions = useMemo(() => ({
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
+    attachTranscript: (transcript: TranscriptContent) => perform(() => repository.attachTranscript(transcript)),
+    removeTranscript: (itemId: string) => perform(() => repository.removeTranscript(itemId)),
     applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),
     saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[], duplicates?: ReadonlySet<string>) => perform(() => repository.saveImportedBatch(items, files, duplicates)),
     queueAnalysis,
@@ -214,5 +221,5 @@ export function useLibraryData(): LibraryData {
     deleteTag: (id: string) => perform(() => repository.deleteTag(id)),
   }), [perform, refresh, queueAnalysis, startAnalysis, refreshAnalysisJobs])
 
-  return { items, collections, categories, tags, jobs, analysisJobs, analysisRunning, analysisMessage, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, prepareAnalysisReview: reviewAnalysis, getProcessingCapability: getCapability, actions }
+  return { items, collections, categories, tags, jobs, analysisJobs, analysisRunning, analysisMessage, loading, error, refresh, perform, findDuplicate, getSourceFile, getExtractedContent, getAnalyses, getTranscript, prepareAnalysisReview: reviewAnalysis, getProcessingCapability: getCapability, actions }
 }

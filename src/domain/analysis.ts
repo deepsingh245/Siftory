@@ -2,16 +2,17 @@ import { normalizeHttpUrl } from './library.ts'
 import type { SavedItem } from './library.ts'
 import type { ExtractedContent } from './processing.ts'
 
-export const analysisVersion = '1'
+export const analysisVersion = '2'
 export const maxAnalysisTextLength = 16_000
 
 export type AnalysisInput = {
-  kind: 'caption' | 'extracted-text'
+  kind: 'caption' | 'extracted-text' | 'transcript'
   text: string
   truncated: boolean
+  provenance?: string
 }
 
-type EvidenceNote = { text: string; evidence: string }
+type EvidenceNote = { text: string; evidence: string; timestampMs?: number }
 
 export type AnalysisResult = {
   summary: EvidenceNote
@@ -46,8 +47,12 @@ export function prepareAnalysisInput(item: SavedItem, extracted?: ExtractedConte
   return { kind: input.kind, text, truncated: text.length < input.text.length }
 }
 
+export function prepareTranscriptAnalysisInput(text: string, provenance?: string): AnalysisInput {
+  return { kind: 'transcript', text, truncated: false, provenance }
+}
+
 export async function analysisFingerprint(input: AnalysisInput): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify([input.kind, input.text]))
+  const bytes = new TextEncoder().encode(JSON.stringify([input.kind, input.text, input.provenance ?? null]))
   const hash = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }

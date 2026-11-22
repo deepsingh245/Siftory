@@ -56,6 +56,7 @@ export type SavedItem = {
   importRecordKey?: string
   sourceFingerprint?: string
   sourceFileId?: string
+  transcriptId?: string
 }
 
 export type SourceFileRecord = {

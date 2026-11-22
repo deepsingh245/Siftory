@@ -32,6 +32,7 @@ export function AnalysisBatchReview({ itemIds, queuedJobs, data, onClose }: {
   const connected = connection?.state === 'connected' ? connection : undefined
   const selectedModel = queuedJobs?.[0]?.model ?? (connected?.models.some((entry) => entry.slug === model) ? model : connected?.models.find((entry) => entry.slug === 'gpt-6-sol')?.slug ?? connected?.models[0]?.slug ?? '')
   const ready = review?.items.filter((entry) => entry.state === 'ready').length ?? 0
+  const requestCount = review?.items.reduce((total, entry) => total + (entry.state === 'ready' ? entry.requestCount ?? 1 : 0), 0) ?? 0
 
   async function prepare() {
     if (!selectedModel) return
@@ -79,11 +80,11 @@ export function AnalysisBatchReview({ itemIds, queuedJobs, data, onClose }: {
       <div className="analysis-review-summary" aria-live="polite"><span>{ready} ready</span><span>{review.items.filter((entry) => entry.state === 'cached').length} already analyzed</span><span>{review.items.filter((entry) => entry.state === 'unavailable').length} unavailable</span><span>{review.items.filter((entry) => entry.state === 'changed').length} changed since queued</span></div>
       <ol className="analysis-review-list">{review.items.map((entry) => <li key={entry.itemId}>
         <strong>{entry.title}</strong><span className={`processing-badge processing-badge--${entry.state}`}>{entry.state === 'ready' ? 'Ready' : entry.state === 'cached' ? 'Already analyzed' : entry.state === 'changed' ? 'Text changed' : 'No usable text'}</span>
-        {entry.input && <details><summary>Review text to send ({entry.input.kind === 'caption' ? 'caption' : 'extracted text'})</summary><pre className="analysis-source">{entry.input.text}</pre>{entry.input.truncated && <p>Only the first {entry.input.text.length.toLocaleString()} characters will be analyzed.</p>}</details>}
+        {entry.input && <details><summary>Review text to send ({entry.input.kind === 'caption' ? 'caption' : entry.input.kind === 'transcript' ? 'user-provided transcript' : 'extracted text'})</summary><pre className="analysis-source">{entry.input.text}</pre>{entry.input.truncated && <p>Only the first {entry.input.text.length.toLocaleString()} characters will be analyzed.</p>}{entry.input.kind === 'transcript' && entry.state === 'ready' && <p>This full transcript is divided into bounded requests. {entry.requestCount} request{entry.requestCount === 1 ? '' : 's'} remain for this review; completed steps are saved locally for retries.</p>}</details>}
       </li>)}</ol>
       {ready > 0 && <>
         {!queuedJobs && <button className="quiet-button" type="button" disabled={busy} onClick={() => void queue()}>Add reviewed items to queue</button>}
-        <label className="analysis-consent"><input type="checkbox" checked={consent} disabled={busy || !connected || !reviewConnectionId || data.analysisRunning} onChange={(event) => setConsent(event.target.checked)} /><span>Send the reviewed text above to OpenAI using {review.model}. This may use ChatGPT plan allowance or enabled credits.</span></label>
+        <label className="analysis-consent"><input type="checkbox" checked={consent} disabled={busy || !connected || !reviewConnectionId || data.analysisRunning} onChange={(event) => setConsent(event.target.checked)} /><span>Send the reviewed text above to OpenAI using {review.model} in {requestCount} sequential request{requestCount === 1 ? '' : 's'}. This may use ChatGPT plan allowance or enabled credits.</span></label>
         <button className="primary-button" type="button" disabled={!consent || busy || data.analysisRunning || !connected || connected.connectionId !== reviewConnectionId} onClick={() => void start()}>{data.analysisRunning ? 'Analysis running…' : 'Confirm and start analysis'}</button>
         {connected?.connectionId !== reviewConnectionId && <p role="alert" className="processing-capability-reason">The ChatGPT connection changed. Prepare a new review before starting.</p>}
       </>}

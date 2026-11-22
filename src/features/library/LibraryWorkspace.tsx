@@ -31,6 +31,8 @@ import { maxAnalysisBatchSize } from '../../domain/analysisQueue'
 import { ChatGptSettings } from '../analysis/ChatGptSettings'
 import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
 import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
+import { TranscriptPanel } from './TranscriptPanel'
+import { identifyYouTubeUrl } from '../../domain/youtube'
 import './library.css'
 
 type Props = {
@@ -163,6 +165,12 @@ function LibraryListing({
 
   async function handleCreate(draft: ItemDraft) {
     const item = createSavedItem(draft)
+    const youtube = item.url ? identifyYouTubeUrl(item.url) : undefined
+    if (youtube && item.sourceType === 'website') {
+      item.sourceType = 'youtube'
+      item.contentType = youtube.contentType
+      item.sourceMetadata = { ...(item.sourceMetadata ?? {}), youtubeVideoId: youtube.videoId }
+    }
     if (item.canonicalUrl) {
       const duplicate = await data.findDuplicate(item.canonicalUrl)
       if (duplicate && !window.confirm(`This link is already in your library as “${displayTitle(duplicate)}”. Add another copy?`)) return
@@ -435,6 +443,8 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
   const [sourceFileLookupId, setSourceFileLookupId] = useState<string>()
   const markViewed = data.actions.markViewed
   const getSourceFile = data.getSourceFile
+  const storedVideoId = item.sourceMetadata?.youtubeVideoId
+  const youtubeVideoId = typeof storedVideoId === 'string' ? storedVideoId : item.url ? identifyYouTubeUrl(item.url)?.videoId : undefined
 
   useEffect(() => {
     void markViewed(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not update recent history.'))
@@ -469,6 +479,12 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
     setError(undefined)
     try {
       const updated = updateSavedItem(item, draft)
+      const youtube = updated.url ? identifyYouTubeUrl(updated.url) : undefined
+      if (youtube && updated.sourceType === 'website') {
+        updated.sourceType = 'youtube'
+        updated.contentType = youtube.contentType
+        updated.sourceMetadata = { ...(updated.sourceMetadata ?? {}), youtubeVideoId: youtube.videoId }
+      }
       if (updated.canonicalUrl && updated.canonicalUrl !== item.canonicalUrl) {
         const duplicate = await data.findDuplicate(updated.canonicalUrl)
         if (duplicate && duplicate.id !== item.id && !window.confirm(`This link is already saved as “${displayTitle(duplicate)}”. Keep both items?`)) return
@@ -514,6 +530,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
               <dl className="detail-list">
                 <DetailRow label="Original link">{item.url && safeExternalUrl(item.url) ? <a href={safeExternalUrl(item.url)} target="_blank" rel="noreferrer">{item.url}</a> : <span>{item.url ? 'Unavailable: invalid web address' : 'Not added'}</span>}</DetailRow>
                 <DetailRow label="Content type">{humanize(item.contentType)}</DetailRow>
+                {item.sourceType === 'youtube' && <DetailRow label="YouTube video ID">{youtubeVideoId || 'Not recognized from this link'}</DetailRow>}
                 <DetailRow label="Creator">{item.creatorName || 'Not added'}</DetailRow>
                 <DetailRow label="Creator handle">{item.creatorHandle ? `@${item.creatorHandle}` : 'Not added'}</DetailRow>
                 <DetailRow label="Date saved">{item.savedAt || 'Not added'}</DetailRow>
@@ -524,6 +541,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
             <section className="detail-panel"><h2>Description or caption</h2><p>{item.description || 'No description has been added.'}</p></section>
             <section className="detail-panel"><h2>Your notes</h2><p className="detail-notes">{item.userNotes || 'No notes yet.'}</p></section>
             <ProcessingPanel item={item} data={data} />
+            <TranscriptPanel item={item} data={data} />
             <AnalysisPanel item={item} data={data} />
           </div>
           <aside className="detail-aside" aria-label="Organize item">

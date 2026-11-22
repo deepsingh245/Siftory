@@ -1,6 +1,6 @@
 ﻿# Siftory Data Model
 
-This document describes the conceptual model. The library, imports, jobs, extracted text, individual analyses, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 5. Research sessions remain planned.
+This document describes the conceptual model. The library, imports, jobs, extracted text, transcript artifacts, individual analyses, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 6. Research sessions remain planned.
 
 ## SavedItem
 
@@ -29,6 +29,7 @@ Suggested fields:
 - `importRecordKey`: stable key derived from the exact Instagram JSON file fingerprint and row index, used to recognize an already imported record when reopening the same export.
 - `sourceFingerprint`: SHA-256 fingerprint for imported file bytes when applicable.
 - `sourceFileId`: optional link to a locally stored original PDF or text file.
+- `transcriptId`: optional link to a separately stored user-provided transcript artifact.
 
 ## SourceFile
 
@@ -39,6 +40,10 @@ Stores the original user-selected PDF or plain-text file locally for later proce
 - `createdAt`.
 
 Removing a saved item removes its associated source file in the same transaction.
+
+## TranscriptContent (implemented for user-provided Instagram/YouTube text)
+
+Stored separately in the `transcripts` object store and linked to one saved item. It contains normalized text, optional timed subtitle segments, parser version, content fingerprint, import time and origin, and optional filename/media type/original Blob or pasted source text. File input is bounded to 20 MiB and normalized transcript text to 100,000 characters. Replacing or removing a transcript also removes its transcript-specific analyses and jobs. It does not replace the saved URL, source metadata, caption, or notes.
 
 ## ExtractedContent (implemented for local text extraction)
 
@@ -52,11 +57,11 @@ Never overwrite original source text with extracted or corrected text.
 
 Structured AI-generated understanding stored separately in the `analyses` object store. The current record keeps `savedItemId`, analyzed-text fingerprint, source kind, requested model, analysis version, time, and result. Results include a summary, key points, suggested categories, and mentioned entities with source quotes, plus literal links from the analyzed text.
 
-The result key combines item ID, the exact text fingerprint, model, and analysis version. This lets Siftory reuse an unchanged result. Item deletion also deletes its analysis records. Applying an edited category adds a normal item/category association and preserves the generated suggestion.
+The result key combines item ID, the exact text/provenance fingerprint, model, and analysis version. Transcript provenance additionally binds the parser and deterministic chunker versions. This lets Siftory reuse an unchanged result. Transcript evidence can include a timestamp only when the exact quote appears inside one supplied timed segment. Item deletion also deletes its analysis records. Applying an edited category adds a normal item/category association and preserves the generated suggestion.
 
 ## AnalysisJob (implemented)
 
-Stored in the `analysisJobs` object store and keyed by the same item, analyzed-text fingerprint, model, and analysis version as its result. Jobs retain status, attempt count, update time, and a time-limited active attempt identifier. They do not store a copy of source text or OAuth credentials. Claim and completion operations verify the current source text in IndexedDB. Completion writes the validated `Analysis` and job status together. Jobs are sequential and require the app and local server to remain open; an expired attempt becomes Needs Attention for review and explicit retry.
+Stored in the `analysisJobs` object store and keyed by the same item, analyzed-text fingerprint, model, and analysis version as its result. Jobs retain status, attempt count, update time, a time-limited active attempt identifier, and validated completed transcript steps. They do not store OAuth credentials. Claim and completion operations verify the current source text in IndexedDB. Completion writes the validated `Analysis` and job status together. Jobs are sequential and require the app and local server to remain open; an expired attempt becomes Needs Attention for review and explicit retry, preserving completed transcript steps.
 
 Fields proposed for broader coverage and future versions:
 - `id`

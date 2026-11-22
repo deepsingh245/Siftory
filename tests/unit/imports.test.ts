@@ -55,6 +55,9 @@ describe('Instagram export import', () => {
 describe('manual link and file import', () => {
   it('normalizes web links and rejects unsafe schemes and embedded credentials', () => {
     expect(parseManualUrl('  https://EXAMPLE.com/', ' Note ').rows[0].draft).toMatchObject({ url: 'https://example.com/', title: 'Note' })
+    expect(parseManualUrl('https://youtube.com/watch?v=abcdefghijk').rows[0].draft).toMatchObject({ sourceType: 'youtube', contentType: 'video' })
+    expect(parseManualUrl('https://youtu.be/abcdefghijk').rows[0].sourceMetadata).toEqual({ youtubeVideoId: 'abcdefghijk' })
+    expect(parseManualUrl('https://youtube.com/shorts/abcdefghijk').rows[0].draft).toMatchObject({ sourceType: 'youtube', contentType: 'short' })
     for (const url of ['file:///notes', 'javascript:alert(1)', 'https://user:pass@example.com/']) {
       expect(parseManualUrl(url)).toMatchObject({ rows: [], errors: [expect.any(String)] })
     }

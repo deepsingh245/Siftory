@@ -19,4 +19,9 @@ describe('analysis sources and evidence', () => {
     expect(getMentionedLinks(source)).toEqual(['https://example.com/toolkit', 'https://example.com/reference'])
     expect(getMentionedLinks('Text https://example.com/cut-of', true)).toEqual([])
   })
+
+  it('does not trust provider-supplied timestamp metadata', () => {
+    const value = { summary: { text: 'A finding.', evidence: 'Exact source quote.', timestampMs: 999_999 }, points: [], categories: [], mentions: [] }
+    expect(validateAnalysis(value, 'Exact source quote.').summary).toEqual({ text: 'A finding.', evidence: 'Exact source quote.' })
+  })
 })

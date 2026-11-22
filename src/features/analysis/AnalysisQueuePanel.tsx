@@ -32,8 +32,9 @@ export function AnalysisQueuePanel({ data }: { data: LibraryData }) {
     {jobs.length ? <ul className="processing-job-list">{jobs.map((job) => {
       const item = data.items.find((candidate) => candidate.id === job.savedItemId)
       return <li key={job.id}><article className="processing-job-card">
-        <div className="processing-job-heading"><div><p className="library-eyebrow">{job.model} · {job.kind === 'caption' ? 'CAPTION' : 'EXTRACTED TEXT'}</p><h3>{item ? <a href={`#/item/${encodeURIComponent(item.id)}`}>{displayTitle(item)}</a> : 'Saved item removed'}</h3></div><span className={`processing-badge processing-badge--${job.status}`}>{statusLabel(job.status)}</span></div>
+        <div className="processing-job-heading"><div><p className="library-eyebrow">{job.model} · {job.kind === 'caption' ? 'CAPTION' : job.kind === 'transcript' ? 'TRANSCRIPT' : 'EXTRACTED TEXT'}</p><h3>{item ? <a href={`#/item/${encodeURIComponent(item.id)}`}>{displayTitle(item)}</a> : 'Saved item removed'}</h3></div><span className={`processing-badge processing-badge--${job.status}`}>{statusLabel(job.status)}</span></div>
         <p className="processing-job-meta">{job.attempts} {job.attempts === 1 ? 'attempt' : 'attempts'} · Updated {new Date(job.updatedAt).toLocaleString()}</p>
+        {job.kind === 'transcript' && typeof job.totalSteps === 'number' && <p className="processing-job-meta">Transcript progress: {Math.min(job.completedSteps?.length ?? 0, job.totalSteps)} of {job.totalSteps} analysis steps saved</p>}
         {job.message && <p className="processing-job-error">{job.message}</p>}
         <div className="processing-actions">
           {job.status === 'queued' && <button className="quiet-button" type="button" disabled={data.analysisRunning} onClick={() => setReviewJobs([job])}>Review this item</button>}

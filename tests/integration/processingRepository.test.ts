@@ -122,7 +122,7 @@ describe('processing repository', () => {
 
     expect(await repository.getItem(item.id)).toEqual(item)
     expect(await repository.getSourceFile(item.id)).toEqual(legacyFile)
-    expect(databaseVersion).toBe(5)
+    expect(databaseVersion).toBe(6)
     const upgraded = await new Promise<IDBDatabase>((resolve, reject) => {
       const open = indexedDB.open(name)
       open.onsuccess = () => resolve(open.result)

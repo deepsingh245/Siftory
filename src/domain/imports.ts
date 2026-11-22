@@ -1,5 +1,6 @@
 import { createSavedItem, normalizeHttpUrl } from './library'
 import type { ContentType, ItemDraft, SavedItem, SourceFileRecord, SourceType } from './library'
+import { identifyYouTubeUrl } from './youtube'
 
 export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024
 export const MAX_IMPORT_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -280,8 +281,9 @@ export function parseManualUrl(urlInput: string, titleInput = ''): ImportParseRe
     }
     const url = normalizeHttpUrl(urlInput)
     if (!url) return { rows: [], errors: ['Enter a web URL to continue.'] }
+    const youtube = identifyYouTubeUrl(url)
     return {
-      rows: [createRow('url', 0, { ...emptyDraft('website', 'unknown'), url, title: titleInput.trim().slice(0, MAX_IMPORTED_TITLE_CHARS) })],
+      rows: [createRow('url', 0, { ...emptyDraft(youtube ? 'youtube' : 'website', youtube ? youtube.contentType : 'unknown'), url, title: titleInput.trim().slice(0, MAX_IMPORTED_TITLE_CHARS) }, youtube ? { sourceMetadata: { youtubeVideoId: youtube.videoId } } : {})],
       errors: [],
     }
   } catch (cause) {

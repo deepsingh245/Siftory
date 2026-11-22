@@ -101,7 +101,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Gate:** The user can connect the intended ChatGPT account and explicitly allow plan usage; submit an imported text-bearing item; see validated, stored summaries, key points, categories, and mentioned links with provenance; edit or reject classifications; retry safely; and see clear usage/failure limits. No API key or hidden Codex credential is required. Phase 3 parser/migration tests and Phase 1–4 manual review debt must be closed before implementation starts.
 
-**Current status:** Implemented for Instagram captions and extracted `.txt` text. ChatGPT sign-in remains in local server memory. The app supports resumable 100-row import transactions, previews 50 rows at a time, recognizes the same Instagram export after reload, and persists consented analysis jobs/results. See the Phase 5 follow-up plan for test and browser evidence. Persistent account storage and broader media/transcript inputs remain open.
+**Current status:** Implemented for Instagram captions and extracted `.txt` text. ChatGPT sign-in remains in local server memory. The app supports resumable 100-row import transactions, previews 50 rows at a time, recognizes the same Instagram export after reload, and persists consented analysis jobs/results. Phase 6 adds user-provided transcripts separately; automatic platform media/transcript retrieval and persistent account storage remain open. See the Phase 5 follow-up plan for its test and browser evidence.
 
 ### Phase 6 — Source coverage: Instagram and YouTube
 
@@ -110,6 +110,10 @@ Deliver a calm, responsive, local-first research library where a person can impo
 **Work:** Validate Instagram export content coverage and add user-controlled import for media/transcripts actually included or legitimately obtained. Add YouTube transcript availability and ingestion only through a documented, permitted source path; offer user-provided transcript import when automatic captions are unavailable. Keep URLs and transcripts distinct, preserve timestamps when available, and pass transcript text through the Phase 5 analysis pipeline. Do not bypass login, access controls, or platform restrictions; do not claim media analysis without usable content.
 
 **Gate:** Instagram and YouTube items clearly distinguish metadata-only, transcript available, unsupported, and analyzed states. Available transcript text can be summarized and traced to its source; inaccessible media has an actionable explanation.
+
+**Focused plan:** [Phase 6 source coverage](phases/PHASE-6-SOURCE-COVERAGE.md) prioritizes user-provided transcripts, timed subtitle evidence, full-text chunking, and a review of official platform access before any API integration.
+
+**Implementation status:** User-provided `.txt`, SRT, and WebVTT transcript attach/replace/remove, local provenance, YouTube URL recognition, schema version 6, timed evidence, and resumable chunk/reduction analysis are implemented. Automatic transcript access remains excluded. Automated checks pass; interactive desktop/mobile and keyboard review remains to be completed before closing the phase gate.
 
 ### Phase 7 — Research workspace
 
@@ -142,4 +146,4 @@ Review and agree on that focused plan before substantial implementation. Complet
 
 ## Current milestone
 
-The Phase 5 batch and import follow-up is implemented. The next milestone is Phase 6 source coverage: user-provided content and permitted transcript paths for Instagram and YouTube. See the [Phase 5 follow-up plan](phases/PHASE-5-BATCH-ANALYSIS.md) for verification evidence and the handoff.
+The Phase 5 batch and import follow-up is implemented. The next milestone is Phase 6 source coverage: user-provided content and permitted transcript paths for Instagram and YouTube. See the [Phase 5 follow-up plan](phases/PHASE-5-BATCH-ANALYSIS.md) for verification evidence and the [Phase 6 focused plan](phases/PHASE-6-SOURCE-COVERAGE.md) before coding begins.

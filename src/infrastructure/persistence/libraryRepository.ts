@@ -3,6 +3,8 @@ import { prepareAnalysisInput } from '../../domain/analysis'
 import type { Analysis, AnalysisInput } from '../../domain/analysis'
 import { analysisAttemptLeaseMs, maxAnalysisBatchSize } from '../../domain/analysisQueue'
 import type { AnalysisJob } from '../../domain/analysisQueue'
+import type { TranscriptContent } from '../../domain/transcripts'
+import { transcriptAnalysisProvenance } from '../../domain/transcriptAnalysis'
 import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
 import { MAX_PROCESSING_SOURCE_BYTES, TEXT_EXTRACTION_VERSION } from '../../domain/processing'
 import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
@@ -13,7 +15,7 @@ import type { LibraryDatabase } from './libraryDatabase'
 export type LibraryRepository = ReturnType<typeof createLibraryRepository>
 
 type ImportReviewResult = { savedIds: string[]; duplicates: { itemId: string; existing: SavedItem }[] }
-const analysisStores = ['savedItems', 'extractedContent', 'analyses', 'analysisJobs'] as const
+const analysisStores = ['savedItems', 'extractedContent', 'analyses', 'analysisJobs', 'transcripts'] as const
 type AnalysisTransaction = IDBPTransaction<LibraryDatabase, typeof analysisStores, 'readwrite'>
 
 export function createLibraryRepository(name = databaseName, onBlocked?: () => void) {
@@ -53,6 +55,10 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       ? await tx.objectStore('extractedContent').index('by-source-key').get([itemId, item.sourceFingerprint, TEXT_EXTRACTION_VERSION])
       : undefined
     const current = prepareAnalysisInput(item, extraction)
+    if (expected.kind === 'transcript') {
+      const transcript = item.transcriptId ? await tx.objectStore('transcripts').get(item.transcriptId) : undefined
+      return transcript?.text === expected.text && transcriptAnalysisProvenance(transcript) === expected.provenance
+    }
     return current?.text === expected.text && current.kind === expected.kind
   }
 
@@ -146,6 +152,62 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async getAnalysisJobs() {
       return (await connection()).getAll('analysisJobs')
+    },
+
+    async getTranscript(id: string) {
+      return (await connection()).get('transcripts', id)
+    },
+
+    async attachTranscript(transcript: TranscriptContent) {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs'], 'readwrite')
+      try {
+        const items = tx.objectStore('savedItems')
+        const item = await items.get(transcript.savedItemId)
+        if (!item || !['youtube', 'instagram'].includes(item.sourceType)) throw new Error('Transcripts can only be attached to saved YouTube or Instagram items.')
+        const oldId = item.transcriptId
+        if (oldId && oldId !== transcript.id) await tx.objectStore('transcripts').delete(oldId)
+        await tx.objectStore('transcripts').put(transcript)
+        await items.put({ ...item, transcriptId: transcript.id, updatedAt: new Date().toISOString() })
+        if (oldId && oldId !== transcript.id) {
+          const analyses = await tx.objectStore('analyses').index('by-item').getAll(item.id)
+          const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(item.id)
+          await Promise.all([
+            ...analyses.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analyses').delete(entry.id)),
+            ...jobs.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analysisJobs').delete(entry.id)),
+          ])
+        }
+        await tx.done
+      } catch (error) { await tx.done.catch(() => undefined); throw error }
+    },
+
+    async removeTranscript(itemId: string) {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs'], 'readwrite')
+      const item = await tx.objectStore('savedItems').get(itemId)
+      if (item?.transcriptId) await tx.objectStore('transcripts').delete(item.transcriptId)
+      if (item) await tx.objectStore('savedItems').put({ ...item, transcriptId: undefined, updatedAt: new Date().toISOString() })
+      const analyses = await tx.objectStore('analyses').index('by-item').getAll(itemId)
+      const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(itemId)
+      await Promise.all([
+        ...analyses.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analyses').delete(entry.id)),
+        ...jobs.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analysisJobs').delete(entry.id)),
+      ])
+      await tx.done
+    },
+
+    async saveAnalysisStep(id: string, attemptId: string, stepId: string, result: Analysis['result']) {
+      return writeAnalysis(async (tx) => {
+        const store = tx.objectStore('analysisJobs')
+        const job = await store.get(id)
+        if (job?.status !== 'analyzing' || job.attemptId !== attemptId || (job.leaseUntil ?? 0) <= Date.now()) return false
+        const completedSteps = job.completedSteps ?? []
+        const next = completedSteps.some((entry) => entry.id === stepId)
+          ? completedSteps.map((entry) => entry.id === stepId ? { id: stepId, result } : entry)
+          : [...completedSteps, { id: stepId, result }]
+        await store.put({ ...job, completedSteps: next, leaseUntil: Date.now() + analysisAttemptLeaseMs, updatedAt: new Date().toISOString() })
+        return true
+      })
     },
 
     async enqueueAnalysisJobs(candidates: AnalysisJob[]) {
@@ -501,13 +563,15 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
 
     async deleteItem(id: string) {
       const db = await connection()
-      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses', 'analysisJobs'], 'readwrite')
+      const tx = db.transaction(['savedItems', 'sourceFiles', 'processingJobs', 'extractedContent', 'analyses', 'analysisJobs', 'transcripts'], 'readwrite')
       const jobs = await tx.objectStore('processingJobs').index('by-item').getAllKeys(id)
       const contents = await tx.objectStore('extractedContent').index('by-item').getAllKeys(id)
       const analyses = await tx.objectStore('analyses').index('by-item').getAllKeys(id)
       const analysisJobs = await tx.objectStore('analysisJobs').index('by-item').getAllKeys(id)
+      const item = await tx.objectStore('savedItems').get(id)
       await tx.objectStore('savedItems').delete(id)
       await tx.objectStore('sourceFiles').delete(id)
+      if (item?.transcriptId) await tx.objectStore('transcripts').delete(item.transcriptId)
       await Promise.all([
         ...jobs.map((key) => tx.objectStore('processingJobs').delete(key)),
         ...contents.map((key) => tx.objectStore('extractedContent').delete(key)),

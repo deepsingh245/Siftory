@@ -108,7 +108,7 @@ Exit criteria:
 - Usage/auth failures pause work with clear reasons and never fall back to paid billing without consent.
 - Unsupported/missing media is labeled honestly; no arbitrary URL fetch or invented analysis.
 
-Current status: The terminal check passed live, and the account holder confirmed the working in-app flow. Persistent accounts, durable batch jobs, and large-export handling remain open.
+Current status: Implemented for Instagram captions and extracted `.txt` content. Batch jobs and resumable Instagram imports are implemented. User-provided transcripts are added in Phase 6; automatic platform transcript retrieval and persistent accounts remain open. See the [Phase 5 batch follow-up](phases/PHASE-5-BATCH-ANALYSIS.md).
 
 ## Phase 6 — Source coverage: Instagram and YouTube
 
@@ -123,6 +123,10 @@ Exit criteria:
 - Available Instagram/YouTube text can be analyzed by Phase 5 with traceable source evidence.
 - No login-wall bypass, arbitrary video download, or fabricated transcript is used.
 - Source access failures are understandable and retryable only when a legitimate route exists.
+
+Focused plan: [Phase 6 source coverage](phases/PHASE-6-SOURCE-COVERAGE.md). It makes user-provided transcripts the reliable path and gates platform API work on current official documentation and permissions.
+
+Implementation status: User-provided transcript artifacts, local YouTube URL recognition, timed quote links, and resumable full-transcript analysis are implemented and covered by automated checks. Siftory does not retrieve or verify platform transcripts. Interactive accessibility and device-size review remains before the Phase 6 gate can close.
 
 ## Phase 7 — Research workspace
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { deleteDB, openDB } from 'idb'
 import type { Category, Collection, SavedItem, Tag } from '../../src/domain/library'
 import type { Analysis } from '../../src/domain/analysis'
+import { createTranscriptContent, parseTranscript } from '../../src/domain/transcripts'
 import { createSavedItem } from '../../src/domain/library'
 import { parseSourceFile, toImportedItems } from '../../src/domain/imports'
 import { createLibraryRepository } from '../../src/infrastructure/persistence/libraryRepository'
@@ -84,8 +85,20 @@ describe('local library database', () => {
 
     const db = await openLibraryDatabase(name)
     expect(db.version).toBe(databaseVersion)
-    expect([...db.objectStoreNames]).toEqual(['analyses', 'analysisJobs', 'categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags'])
+    expect([...db.objectStoreNames]).toEqual(['analyses', 'analysisJobs', 'categories', 'collections', 'extractedContent', 'processingJobs', 'savedItems', 'sourceFiles', 'tags', 'transcripts'])
     db.close()
+  })
+
+  it('adds the transcript store when upgrading an existing version 5 library', async () => {
+    const legacy = await openDB(name, 5, { upgrade(db) { db.createObjectStore('savedItems', { keyPath: 'id' }) } })
+    const item = newItem('v5-preserved')
+    await legacy.add('savedItems', item)
+    legacy.close()
+    const upgraded = await openLibraryDatabase(name)
+    expect(upgraded.version).toBe(6)
+    expect([...upgraded.objectStoreNames]).toContain('transcripts')
+    expect(await upgraded.get('savedItems', item.id)).toEqual(item)
+    upgraded.close()
   })
 
   it("records recent views without changing the item's content update timestamp", async () => {
@@ -133,6 +146,23 @@ describe('local library database', () => {
     await repository.deleteItem('remove-me')
     expect(await repository.getItem('remove-me')).toBeUndefined()
     expect(await repository.getItems()).toEqual([])
+  })
+
+  it('attaches transcripts separately, preserves imported captions, and cleans them up on removal', async () => {
+    const item = createSavedItem({ title: 'Video', url: 'https://youtu.be/abcdefghijk', sourceType: 'youtube', contentType: 'video', description: 'Original caption' }, undefined, 'video-transcript')
+    await repository.saveItem(item)
+    const transcript = await createTranscriptContent(item.id, parseTranscript('User words from the video.', 'text'), 'pasted', { pastedText: 'User words from the video.' })
+    await repository.attachTranscript(transcript)
+    expect(await repository.getItem(item.id)).toMatchObject({ description: 'Original caption', transcriptId: transcript.id })
+    expect(await repository.getTranscript(transcript.id)).toEqual(transcript)
+    await repository.removeTranscript(item.id)
+    expect(await repository.getItem(item.id)).toMatchObject({ description: 'Original caption' })
+    expect((await repository.getItem(item.id))?.transcriptId).toBeUndefined()
+    expect(await repository.getTranscript(transcript.id)).toBeUndefined()
+    const second = await createTranscriptContent(item.id, parseTranscript('Keep evidence local.', 'text'), 'pasted')
+    await repository.attachTranscript(second)
+    await repository.deleteItem(item.id)
+    expect(await repository.getTranscript(second.id)).toBeUndefined()
   })
 
   it('keeps analyses separate and removes them when the item is removed', async () => {

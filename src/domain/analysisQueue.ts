@@ -1,5 +1,7 @@
 import { analysisId, analysisVersion } from './analysis'
 import type { AnalysisInput } from './analysis'
+import type { AnalysisResult } from './analysis'
+import type { TranscriptSegment } from './transcripts'
 
 export const maxAnalysisBatchSize = 25
 export const analysisAttemptLeaseMs = 10 * 60_000
@@ -20,6 +22,9 @@ export type AnalysisJob = {
   attemptId?: string
   leaseUntil?: number
   message?: string
+  completedSteps?: { id: string; result: AnalysisResult }[]
+  totalSteps?: number
+  chunkerVersion?: string
 }
 
 export type ReviewItem = {
@@ -28,6 +33,8 @@ export type ReviewItem = {
   state: 'ready' | 'cached' | 'unavailable' | 'changed'
   input?: AnalysisInput
   job?: AnalysisJob
+  requestCount?: number
+  transcriptSegments?: TranscriptSegment[]
 }
 
 export type AnalysisReview = {
