@@ -265,6 +265,23 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       } catch (error) { await tx.done.catch(() => undefined); throw error }
     },
 
+    async attachGeneratedTranscriptIfMissing(transcript: TranscriptContent): Promise<boolean> {
+      const db = await connection()
+      const tx = db.transaction(['savedItems', 'transcripts'], 'readwrite')
+      try {
+        const items = tx.objectStore('savedItems')
+        const item = await items.get(transcript.savedItemId)
+        if (!item || item.sourceType !== 'instagram' || item.transcriptId || item.autoTranscriptDismissed || transcript.origin !== 'local-asr') {
+          await tx.done
+          return false
+        }
+        await tx.objectStore('transcripts').put(transcript)
+        await items.put({ ...item, transcriptId: transcript.id, updatedAt: new Date().toISOString() })
+        await tx.done
+        return true
+      } catch (error) { await tx.done.catch(() => undefined); throw error }
+    },
+
     async removeTranscript(itemId: string) {
       const db = await connection()
       const tx = db.transaction(['savedItems', 'transcripts', 'analyses', 'analysisJobs', 'researchSessions'], 'readwrite')
@@ -273,13 +290,21 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
         await tx.objectStore('transcripts').delete(item.transcriptId)
         await markSessionsForSourceChange(tx.objectStore('researchSessions'), itemId, 'transcript', 'deleted')
       }
-      if (item) await tx.objectStore('savedItems').put({ ...item, transcriptId: undefined, updatedAt: new Date().toISOString() })
+      if (item) await tx.objectStore('savedItems').put({ ...item, transcriptId: undefined, autoTranscriptDismissed: true, updatedAt: new Date().toISOString() })
       const analyses = await tx.objectStore('analyses').index('by-item').getAll(itemId)
       const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(itemId)
       await Promise.all([
         ...analyses.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analyses').delete(entry.id)),
         ...jobs.filter((entry) => entry.kind === 'transcript').map((entry) => tx.objectStore('analysisJobs').delete(entry.id)),
       ])
+      await tx.done
+    },
+
+    async allowAutoTranscript(itemId: string) {
+      const db = await connection()
+      const tx = db.transaction('savedItems', 'readwrite')
+      const item = await tx.store.get(itemId)
+      if (item) await tx.store.put({ ...item, autoTranscriptDismissed: false, updatedAt: new Date().toISOString() })
       await tx.done
     },
 

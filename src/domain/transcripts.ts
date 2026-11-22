@@ -4,7 +4,7 @@ export const transcriptParserVersion = 'transcript-v1'
 export const maxTranscriptCharacters = 100_000
 
 export type TranscriptFormat = 'text' | 'srt' | 'vtt'
-export type TranscriptOrigin = 'pasted' | 'text-file' | 'srt-file' | 'vtt-file'
+export type TranscriptOrigin = 'pasted' | 'text-file' | 'srt-file' | 'vtt-file' | 'local-asr'
 
 export type TranscriptSegment = {
   startMs: number
@@ -30,6 +30,8 @@ export type TranscriptContent = ParsedTranscript & {
   sourceFingerprint?: string
   sourceBlob?: Blob
   pastedText?: string
+  asrModel?: string
+  audioSourceKey?: string
 }
 
 export function parseTranscript(text: string, format: TranscriptFormat): ParsedTranscript {
@@ -102,7 +104,7 @@ export function createTranscriptContent(
   savedItemId: string,
   parsed: ParsedTranscript,
   origin: TranscriptOrigin,
-  options: Pick<TranscriptContent, 'fileName' | 'mediaType' | 'sourceFingerprint' | 'sourceBlob' | 'pastedText'> = {},
+  options: Pick<TranscriptContent, 'fileName' | 'mediaType' | 'sourceFingerprint' | 'sourceBlob' | 'pastedText' | 'asrModel' | 'audioSourceKey'> = {},
   now = new Date(),
 ): Promise<TranscriptContent> {
   return transcriptFingerprint(parsed).then((fingerprint) => ({

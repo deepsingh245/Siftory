@@ -12,6 +12,7 @@ import { prepareAnalysisReview, queueReviewedAnalysis, runReviewedAnalysis } fro
 import type { AnalysisRun } from '../analysis/analysisQueueService'
 import { chatgpt } from '../analysis/chatgptClient'
 import { prepareResearchReview, submitResearch } from '../research/researchService'
+import { syncLocalMediaTranscripts } from '../media/localMedia'
 
 const repository = createLibraryRepository(undefined, () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('siftory:database-blocked'))
@@ -44,6 +45,7 @@ export type LibraryData = {
     saveItem: (item: SavedItem) => Promise<void>
     attachTranscript: (transcript: TranscriptContent) => Promise<void>
     removeTranscript: (itemId: string) => Promise<void>
+    allowAutoTranscript: (itemId: string) => Promise<void>
     saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => Promise<ResearchSession>
     deleteResearchSession: (id: string) => Promise<void>
     applySuggestedCategory: (id: string, name: string) => Promise<void>
@@ -140,6 +142,21 @@ export function useLibraryData(): LibraryData {
     }
   }, [refresh, refreshAnalysisJobs])
 
+  useEffect(() => {
+    let running = false
+    const sync = async () => {
+      if (running) return
+      running = true
+      try {
+        if (await syncLocalMediaTranscripts(repository)) await refresh()
+      } catch { /* Siftory still works when the optional local media worker is absent. */ }
+      finally { running = false }
+    }
+    void sync()
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void sync() }, 30_000)
+    return () => window.clearInterval(timer)
+  }, [refresh])
+
   const perform = useCallback(async <T,>(task: () => Promise<T>) => {
     const result = await task()
     await refresh()
@@ -197,6 +214,7 @@ export function useLibraryData(): LibraryData {
     saveItem: (item: SavedItem) => perform(() => repository.saveItem(item)),
     attachTranscript: (transcript: TranscriptContent) => perform(() => repository.attachTranscript(transcript)),
     removeTranscript: (itemId: string) => perform(() => repository.removeTranscript(itemId)),
+    allowAutoTranscript: (itemId: string) => perform(() => repository.allowAutoTranscript(itemId)),
     saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => submitResearch(repository, review, selectedIds, connectionId, chatgpt),
     deleteResearchSession: (id: string) => perform(() => repository.deleteResearchSession(id)),
     applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),

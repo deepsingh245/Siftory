@@ -1,0 +1,6 @@
+# Optional local media trial; ordinary Siftory use does not need Python.
+yt-dlp>=2026.7.0
+imageio-ffmpeg>=0.6.0
+faster-whisper>=1.2.0
+# faster-whisper 1.2.1 passes metadata_errors to PyAV; PyAV 19 removed it.
+av<19

@@ -57,6 +57,7 @@ export type SavedItem = {
   sourceFingerprint?: string
   sourceFileId?: string
   transcriptId?: string
+  autoTranscriptDismissed?: boolean
 }
 
 export type SourceFileRecord = {

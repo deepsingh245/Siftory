@@ -113,7 +113,7 @@ Deliver a calm, responsive, local-first research library where a person can impo
 
 **Focused plan:** [Phase 6 source coverage](phases/PHASE-6-SOURCE-COVERAGE.md) prioritizes user-provided transcripts, timed subtitle evidence, full-text chunking, and a review of official platform access before any API integration.
 
-**Implementation status:** User-provided `.txt`, SRT, and WebVTT transcript attach/replace/remove, local provenance, YouTube URL recognition, schema version 6, timed evidence, and resumable chunk/reduction analysis are implemented. Automatic transcript access remains excluded. Automated checks pass; interactive desktop/mobile and keyboard review remains to be completed before closing the phase gate.
+**Implementation status:** User-provided `.txt`, SRT, and WebVTT transcript attach/replace/remove, local provenance, YouTube URL recognition, schema version 6, timed evidence, and resumable chunk/reduction analysis are implemented. A later [optional local media trial](phases/PHASE-6-LOCAL-MEDIA-TRIAL.md) attempts accessible Instagram links with a separate command, produces local WAV/SRT files, and attaches exact matches to empty transcript slots while the app is open. This is unofficial access, not general platform transcript support. Automated checks pass; interactive desktop/mobile and keyboard review remains open.
 
 ### Phase 7 — Research workspace
 

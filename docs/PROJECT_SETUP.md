@@ -2,7 +2,7 @@
 
 ## Current state
 
-Audited on 2026-11-20 and updated for Phase 7 on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, resumable imports, local text extraction, optional ChatGPT analysis, user-provided transcript attachment for saved Instagram and YouTube items, resumable chunked transcript analysis, and library-only research with locally saved sessions. Platform transcript fetching, manual backup/restore, and external web research are not implemented. The starter pack supplied product and implementation guidance but no application source.
+Audited on 2026-11-20 and updated for Phase 7 and a local media trial on 2026-11-22. Siftory runs on Vite, React, and TypeScript with npm. It provides a local library, resumable imports, local text extraction, optional ChatGPT analysis, transcript attachment for saved Instagram and YouTube items, resumable chunked transcript analysis, and library-only research with locally saved sessions. An optional Python command can attempt accessible Instagram links and generate local audio and timed transcripts; the local app attaches matching generated transcripts automatically. General platform transcript access, manual backup/restore, and external web research are not implemented.
 
 The repository was initialized with Git before this task. No remote push or commit was performed for this setup work.
 
@@ -71,7 +71,7 @@ No existing application logic was available to reuse during the Phase 0 audit. P
 - The analysis queue stores item/model/version/attempt state locally but no copy of source text or ChatGPT credentials. It runs sequentially while the app and local server are open. Before sending, the user reviews the exact text and confirms for the selected account and model.
 - A session change, plan limit, or interrupted attempt pauses work for a fresh review or explicit retry. Results and job completion are persisted together. Deleting an item also deletes its analysis jobs and results.
 - Build, lint, all 55 automated tests, and a synthetic Chrome desktop/mobile flow passed on 2026-11-22. See `docs/phases/PHASE-5-BATCH-ANALYSIS.md` for the measured parser run and browser-check scope.
-- ChatGPT credentials remain in local server memory and are lost on restart or expiration. Persistent account registration and automatic Instagram/YouTube transcript retrieval remain future work; user-provided transcript files are stored locally and analyzed only after explicit review and consent.
+- ChatGPT credentials remain in local server memory and are lost on restart or expiration. Persistent account registration and supported general Instagram/YouTube transcript retrieval remain future work. The optional local media trial is separate from ChatGPT; generated transcripts are stored locally and analyzed only after explicit review and consent.
 
 ## Repository layout
 
@@ -122,4 +122,4 @@ The Vite + React + TypeScript stack, npm, IndexedDB through `idb`, Vitest with f
 
 ## Next milestone
 
-Phase 7's library-only research implementation is in place. Next, close the outstanding Phase 6 and Phase 7 manual UI/accessibility reviews, then plan Phase 8 reliability and release readiness. Manual export/restore remains a product gap. See the [Phase 7 plan](phases/PHASE-7-RESEARCH-WORKSPACE.md), [Phase 6 plan](phases/PHASE-6-SOURCE-COVERAGE.md), and [Phase 5 plan](phases/PHASE-5-AI-KNOWLEDGE-FOUNDATION.md).
+Phase 7's library-only research implementation and the optional local media trial are in place. The trial processed seven links from the current `data.json` to WAV and nonempty SRT files; this does not establish general Instagram reliability. Next, close outstanding manual UI/accessibility reviews and plan Phase 8 reliability and release readiness. Manual export/restore remains a product gap. See the [local media trial](phases/PHASE-6-LOCAL-MEDIA-TRIAL.md), [Phase 7 plan](phases/PHASE-7-RESEARCH-WORKSPACE.md), and [Phase 6 plan](phases/PHASE-6-SOURCE-COVERAGE.md).

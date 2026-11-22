@@ -31,10 +31,15 @@
 
 # Siftory private local content, database files, and manual backup exports
 /.siftory/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 /local-data/
 /user-data/
 /backups/
 /imports/
+/data.json
 *.sqlite
 *.sqlite3
 *.db

@@ -29,7 +29,8 @@ Suggested fields:
 - `importRecordKey`: stable key derived from the exact Instagram JSON file fingerprint and row index, used to recognize an already imported record when reopening the same export.
 - `sourceFingerprint`: SHA-256 fingerprint for imported file bytes when applicable.
 - `sourceFileId`: optional link to a locally stored original PDF or text file.
-- `transcriptId`: optional link to a separately stored user-provided transcript artifact.
+- `transcriptId`: optional link to a separately stored user-provided or locally generated transcript artifact.
+- `autoTranscriptDismissed`: optional per-item flag that prevents the local media trial from reattaching a transcript after the user removes one.
 
 ## SourceFile
 
@@ -41,9 +42,9 @@ Stores the original user-selected PDF or plain-text file locally for later proce
 
 Removing a saved item removes its associated source file in the same transaction.
 
-## TranscriptContent (implemented for user-provided Instagram/YouTube text)
+## TranscriptContent (implemented for user-provided text and local media trial output)
 
-Stored separately in the `transcripts` object store and linked to one saved item. It contains normalized text, optional timed subtitle segments, parser version, content fingerprint, import time and origin, and optional filename/media type/original Blob or pasted source text. File input is bounded to 20 MiB and normalized transcript text to 100,000 characters. Replacing or removing a transcript also removes its transcript-specific analyses and jobs. It does not replace the saved URL, source metadata, caption, or notes.
+Stored separately in the `transcripts` object store and linked to one saved item. It contains normalized text, optional timed subtitle segments, parser version, content fingerprint, import time and origin, and optional filename/media type/original Blob or pasted source text. Local ASR records also keep the generated SRT fingerprint, model name when known, and a safe key to local audio. File input is bounded to 20 MiB and normalized transcript text to 100,000 characters. Replacing or removing a transcript also removes its transcript-specific analyses and jobs. It does not replace the saved URL, source metadata, caption, or notes.
 
 ## ExtractedContent (implemented for local text extraction)
 

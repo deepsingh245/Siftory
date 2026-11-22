@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { createTranscriptContent, parseTranscript, parseTranscriptFile, type TranscriptContent } from '../../domain/transcripts'
+import { createTranscriptContent, parseTranscript, parseTranscriptFile, type TranscriptContent, type TranscriptOrigin } from '../../domain/transcripts'
 import type { SavedItem } from '../../domain/library'
 import type { LibraryData } from './useLibraryData'
+import { downloadLocalAudio } from '../media/localMedia'
 
 export function TranscriptPanel({ item, data }: { item: SavedItem; data: LibraryData }) {
   const [transcriptState, setTranscriptState] = useState<{ id: string; value: TranscriptContent }>()
@@ -27,7 +28,7 @@ export function TranscriptPanel({ item, data }: { item: SavedItem; data: Library
     try {
       if (transcript && !window.confirm('Replace the transcript attached to this item? Its transcript analysis will also be removed.')) return
       let parsed
-      let origin: 'pasted' | 'text-file' | 'srt-file' | 'vtt-file'
+      let origin: TranscriptOrigin
       let options: Parameters<typeof createTranscriptContent>[3] = {}
       if (file) {
         const imported = await parseTranscriptFile(file)
@@ -51,16 +52,28 @@ export function TranscriptPanel({ item, data }: { item: SavedItem; data: Library
     finally { setBusy(false) }
   }
 
+  async function downloadAudio() {
+    if (!transcript?.audioSourceKey) return
+    setError('')
+    try { await downloadLocalAudio(transcript.audioSourceKey) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'The local audio could not be downloaded.') }
+  }
+
   if (!['youtube', 'instagram'].includes(item.sourceType)) return null
   return <section className="processing-panel" aria-labelledby="transcript-heading" aria-busy={busy}>
-    <h2 id="transcript-heading">User-provided transcript</h2>
-    <p className="processing-boundary-note">Siftory does not fetch or verify media transcripts. Attach text you provide; it stays local until you separately review and consent to AI analysis.</p>
+    <h2 id="transcript-heading">Transcript</h2>
+    <p className="processing-boundary-note">{transcript?.origin === 'local-asr' ? 'Generated from local audio by automatic speech recognition. Review the words for errors before relying on them.' : 'Attach text you provide or run the optional local media trial for accessible Instagram videos.'} Text stays local until you separately review and consent to AI analysis.</p>
     {error && <p className="library-error" role="alert">{error}</p>}{status && <p role="status">{status}</p>}
     {transcript ? <>
       <p>Attached {new Date(transcript.importedAt).toLocaleString()} · {transcript.origin.replace('-', ' ')}{transcript.fileName ? ` · ${transcript.fileName}` : ''} · {transcript.text.length.toLocaleString()} characters · {transcript.segments.length.toLocaleString()} timed segments</p>
+      {transcript.origin === 'local-asr' && <p>Local speech model: {transcript.asrModel ?? 'unspecified'}. Review the transcript against its audio before using it as evidence.</p>}
       <details><summary>View saved transcript</summary><pre className="analysis-source">{transcript.text}</pre></details>
+      {transcript.audioSourceKey && <button className="quiet-button" type="button" onClick={() => void downloadAudio()}>Download local audio</button>}
       <button className="quiet-button danger-button" type="button" disabled={busy} onClick={() => void remove()}>Remove transcript</button>
-    </> : <p className="processing-capability-reason">No transcript is attached. The saved description or caption remains separate.</p>}
+    </> : <>
+      <p className="processing-capability-reason">No transcript is attached. The saved description or caption remains separate.</p>
+      {item.autoTranscriptDismissed && <button className="quiet-button" type="button" onClick={() => { void data.actions.allowAutoTranscript(item.id).then(() => setStatus('Automatic local transcript attachment is enabled again.')).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not enable automatic attachment.')) }}>Allow automatic local transcript again</button>}
+    </>}
     <form className="record-form" onSubmit={(event) => void save(event)}>
       <label className="form-field"><span>{transcript ? 'Replace with pasted transcript' : 'Paste transcript text'}</span><textarea value={text} onChange={(event) => { setText(event.target.value); setFile(undefined) }} maxLength={100_000} rows={7} placeholder="Paste text copied or transcribed by you" /></label>
       <label className="form-field"><span>{transcript ? 'Or replace with transcript file' : 'Or choose a transcript file'}</span><input type="file" accept=".txt,.srt,.vtt,text/plain,text/vtt,application/x-subrip" onChange={(event) => { setFile(event.target.files?.[0]); if (event.target.files?.[0]) setText('') }} /></label>
