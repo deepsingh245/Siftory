@@ -33,7 +33,7 @@ export function AnalysisQueuePanel({ data }: { data: LibraryData }) {
   }
 
   return <section className="analysis-queue" aria-labelledby="analysis-queue-heading">
-    <div className="library-page-heading"><div><p className="library-eyebrow">OPTIONAL CHATGPT WORK</p><h2 id="analysis-queue-heading">AI analysis queue</h2><p className="library-page-description">Jobs stay on this device. Review the exact text and confirm before sending each batch.</p></div>
+    <div className="analysis-batch-heading"><div><h2 id="analysis-queue-heading">AI analysis queue</h2><p className="page-description">Jobs stay on this device. Review the exact text and confirm before sending each batch.</p></div>
       <button className="primary-button" type="button" disabled={!queued.length || data.analysisRunning} onClick={() => setReviewJobs(queued.slice(0, 25))}>{data.analysisRunning ? 'Analysis running…' : `Review queued (${queued.length})`}</button>
     </div>
     <p className="processing-queue-boundary">Siftory does not run analysis in the background. Your signed-in ChatGPT connection is checked before each request; reconnecting requires a fresh review and confirmation.</p>

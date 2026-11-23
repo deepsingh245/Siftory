@@ -1,27 +1,3 @@
-.global-search {
-  cursor: text;
-}
-
-.global-search input {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  color: var(--foreground);
-  background: transparent;
-  font-size: 0.9375rem;
-}
-
-.global-search input::placeholder {
-  color: var(--muted-foreground);
-}
-
-.global-search:focus-within {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 22%, transparent);
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -32,21 +8,6 @@
   clip-path: inset(50%);
 }
 
-.library-page,
-.organizer-page,
-.item-detail {
-  padding-top: clamp(35px, 6vh, 67px);
-}
-
-.library-page-heading,
-.item-detail-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 29px;
-}
-
 .library-eyebrow {
   margin: 0 0 9px;
   color: var(--primary-strong);
@@ -54,24 +15,6 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-
-.library-page-heading h1,
-.item-detail-heading h1,
-.organizer-page h1 {
-  margin: 0;
-  color: var(--foreground);
-  font-size: clamp(34px, 4vw, 47px);
-  font-weight: 400;
-  letter-spacing: -0.045em;
-  line-height: 1.1;
-}
-
-.library-page-description {
-  margin: 9px 0 0;
-  color: var(--muted-strong);
-  font-size: 1rem;
-  line-height: 1.65;
 }
 
 .primary-button,
@@ -479,7 +422,6 @@
   display: inline-flex;
   min-height: 34px;
   align-items: center;
-  margin-bottom: 21px;
   color: var(--primary-strong);
   font-size: 0.9375rem;
   text-decoration: none;
@@ -488,12 +430,6 @@
 .back-link:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.detail-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
 }
 
 .detail-layout {
@@ -1217,33 +1153,6 @@
 }
 
 @media (max-width: 680px) {
-  .global-search {
-    min-width: 0;
-    flex: 0 1 165px;
-  }
-
-  .global-search input {
-    font-size: 0.875rem;
-  }
-
-  .workspace-topline {
-    align-items: flex-start;
-  }
-
-  .library-page,
-  .organizer-page,
-  .item-detail {
-    padding-top: 38px;
-  }
-
-  .library-page-heading,
-  .item-detail-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 23px;
-  }
-
   .import-source-picker {
     grid-template-columns: 1fr;
   }
@@ -1267,12 +1176,6 @@
   .import-row-edit {
     grid-template-columns: 1fr;
     margin-left: 26px;
-  }
-
-  .library-page-heading h1,
-  .item-detail-heading h1,
-  .organizer-page h1 {
-    font-size: 38px;
   }
 
   .sort-field {
@@ -1314,15 +1217,6 @@
 }
 
 @media (max-width: 400px) {
-  .library-page-heading,
-  .item-detail-heading {
-    gap: 12px;
-  }
-
-  .detail-header-actions {
-    width: 100%;
-  }
-
   .organizer-rename,
   .collection-edit {
     grid-template-columns: 1fr;

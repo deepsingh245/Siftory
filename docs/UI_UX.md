@@ -4,7 +4,7 @@
 
 Desktop structure:
 - Left navigation sidebar.
-- Top header with global search, quick add/import and user/settings actions.
+- Global toolbar with the sidebar toggle, library search, import where useful, and the theme switcher. Each page has one main heading and a shared position for its actions.
 - Main content region.
 - Optional right contextual detail panel on screens where it adds value.
 

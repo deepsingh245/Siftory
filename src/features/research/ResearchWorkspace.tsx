@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { PageLayout } from '@/components/layout/PageLayout'
+import { Button } from '@/components/ui/button'
 import { Disclosure } from '@/components/ui/disclosure'
 import { FieldSelect } from '@/components/ui/field-select'
 import { maxResearchQuestionLength, maxResearchSources } from '../../domain/research'
@@ -96,11 +98,8 @@ export function ResearchWorkspace({ sessionId, data }: { sessionId?: string; dat
     finally { setBusy(false) }
   }
 
-  return <section className="research-page" aria-labelledby="research-heading" aria-busy={busy}>
-    <div className="library-page-heading">
-      <div><p className="library-eyebrow">SAVED KNOWLEDGE</p><h1 id="research-heading">Research</h1><p className="library-page-description">Ask a question across saved captions, transcripts, and extracted text. Source retrieval stays on this device.</p></div>
-      {sessionId && <a className="quiet-button" href="#/research">New research</a>}
-    </div>
+  return <PageLayout title="Research" description="Ask a question across saved captions, transcripts, and extracted text. Source retrieval stays on this device."
+    aria-busy={busy} actions={sessionId && <Button asChild variant="outline"><a href="#/research">New research</a></Button>}>
     {error && <p className="library-error" role="alert">{error}</p>}
     {message && <p className="processing-capability-reason" role="status">{message}</p>}
     {sessionId ? activeSession
@@ -136,7 +135,7 @@ export function ResearchWorkspace({ sessionId, data }: { sessionId?: string; dat
         </form>}
       </>}
     <ResearchSessionList sessions={sessions} currentId={sessionId} />
-  </section>
+  </PageLayout>
 }
 
 function ResearchSessionList({ sessions, currentId }: { sessions: ResearchSession[]; currentId?: string }) {

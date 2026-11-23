@@ -67,7 +67,9 @@ const fixture = {
     savedItem('reading', 'Reading list', 'saved'),
     savedItem('library-notes', 'Library notes', 'saved'),
   ],
+  collections: [{ id: 'fixture-collection', name: 'Desk references', createdAt: currentDate, updatedAt: currentDate }],
   categories: [{ id: 'fixture-category', name: 'Research methods', createdAt: currentDate, updatedAt: currentDate }],
+  tags: [{ id: 'fixture-tag', name: 'reference', createdAt: currentDate, updatedAt: currentDate }],
   transcripts: [{
     id: 'local-text', savedItemId: 'review', text: transcriptText, origin: 'pasted', format: 'text', segments: [],
     parserVersion: 'transcript-v1', fingerprint: 'fixture-text', importedAt: currentDate,
@@ -77,6 +79,11 @@ const fixture = {
     version: '2', kind: 'transcript', createdAt: currentDate, fingerprint, links: [],
     result: { summary: { text: 'Ideas are kept for later.', evidence: 'saving ideas' }, points: [], categories: [],
       mentions: appNames.map((text) => ({ text, evidence: text })) },
+  }],
+  researchSessions: [{
+    id: 'fixture-session', version: '1', question: 'What is saved for later?', provider: 'chatgpt-plan', model: 'example-model',
+    createdAt: currentDate, updatedAt: currentDate, sources: [],
+    answer: { evidenceStatus: 'insufficient', summary: { text: 'The saved sources are limited.', citations: [] }, claims: [], limitations: [] },
   }],
 }
 
@@ -369,10 +376,106 @@ try {
   await page.locator(activityRange).click()
   await page.waitForSelector('[role="menu"]', { visible: true })
   assert.equal(await page.$eval('[role="menu"]', (menu) => getComputedStyle(menu).animationName), 'none')
+  await page.keyboard.press('Escape')
+
+  const primaryRoutes = {
+    dashboard: 'Dashboard', library: 'All saved', inbox: 'Inbox', import: 'Bring things in',
+    collections: 'Collections', categories: 'Categories', tags: 'Tags', recent: 'Recently viewed',
+    research: 'Research', queue: 'Processing queue', settings: 'Settings',
+  }
+  const detailRoutes = {
+    'item/review': 'Desk research', 'collection/fixture-collection': 'Desk references',
+    'category/fixture-category': 'Research methods', 'tag/fixture-tag': '#reference',
+    'research/fixture-session': 'Research', 'item/missing': 'This saved item is not available.',
+  }
+  for (const width of [2160, 900, 390]) {
+    await page.setViewport({ width, height: 980, isMobile: width < 768, hasTouch: width < 768 })
+    let primaryLayout
+    for (const [route, title] of Object.entries({ ...primaryRoutes, ...detailRoutes })) {
+      await page.goto(`${origin}/#/${route}`)
+      await heading(title)
+      await layoutFits()
+      const layout = await page.evaluate(() => {
+        const main = document.querySelector('main')
+        const shell = document.querySelector('.workspace-inset').getBoundingClientRect()
+        const title = main.querySelector('h1')
+        const page = main.querySelector('.workspace-page').getBoundingClientRect()
+        const bounds = title.getBoundingClientRect()
+        const description = main.querySelector('.page-header .page-description')
+        const actions = main.querySelector('.page-actions')
+        const toolbar = document.querySelector('.workspace-header')
+        return {
+          headings: main.querySelectorAll('h1').length,
+          toolbar: toolbar.textContent.trim(),
+          x: bounds.left,
+          y: bounds.top,
+          size: getComputedStyle(title).fontSize,
+          weight: getComputedStyle(title).fontWeight,
+          descriptionSize: description && getComputedStyle(description).fontSize,
+          actionTop: actions?.getBoundingClientRect().top,
+          leftGap: page.left - shell.left,
+          rightGap: shell.right - page.right,
+        }
+      })
+      const label = `${route} at ${width}px`
+      assert.equal(layout.headings, 1, label)
+      assert(!layout.toolbar.includes(title), label)
+      assert(layout.leftGap <= 26 && layout.rightGap <= 26, label)
+      const { x, y, size, weight, descriptionSize } = layout
+      if (route in primaryRoutes) {
+        primaryLayout ??= { x, y, size, weight, descriptionSize }
+        assert.deepEqual({ x, y, size, weight, descriptionSize }, primaryLayout, label)
+      } else {
+        assert.deepEqual({ x, size, weight }, { x: primaryLayout.x, size: primaryLayout.size, weight: primaryLayout.weight }, label)
+      }
+      if (layout.actionTop !== undefined && width > 768 && route in primaryRoutes) {
+        assert.equal(layout.actionTop, y, label)
+      }
+      if (width === 2160 && route === 'dashboard') {
+        const tickLabels = '[data-chart] .recharts-xAxis-tick-labels text'
+        await page.waitForSelector(tickLabels, { timeout: 5000 })
+        await page.waitForFunction((selector) => {
+          const chart = document.querySelector('[data-chart]').getBoundingClientRect()
+          return [...document.querySelectorAll(selector)].every((tick) => {
+            const { left, right } = tick.getBoundingClientRect()
+            return left >= chart.left && right <= chart.right
+          })
+        }, { timeout: 5000 }, tickLabels)
+        await screenshot('dashboard-wide.png')
+      }
+      if (width === 2160 && route === 'library') await screenshot('library-wide.png')
+      if (width === 2160 && route === 'research/fixture-session') {
+        await page.waitForFunction(() => document.querySelector('main')?.textContent.includes('What is saved for later?'))
+      }
+    }
+  }
+
+  await page.setViewport({ width: 1440, height: 1000 })
+  await page.goto(origin + '/#/library')
+  await heading('All saved')
+  await page.focus('nav[aria-label="Workspace navigation"] a[href="#/dashboard"]')
+  await page.keyboard.press('Enter')
+  await heading('Dashboard')
+  await page.waitForFunction(() => document.activeElement === document.querySelector('main'))
+  assert.equal(await page.$eval('main', (element) => getComputedStyle(element).outlineStyle), 'none')
+  await page.keyboard.press('Tab')
+  await page.waitForFunction(() => document.activeElement?.matches('.page-actions a[href="#/import"]:focus-visible'))
+  assert(await page.$eval('.page-actions a[href="#/import"]', (element) => {
+    const { outlineStyle, boxShadow } = getComputedStyle(element)
+    return outlineStyle !== 'none' || boxShadow !== 'none'
+  }))
+  await page.focus('.skip-link')
+  await page.keyboard.press('Enter')
+  await page.waitForFunction(() => document.activeElement === document.querySelector('main'))
+  const search = 'input[aria-label="Search your library"]'
+  await page.locator(search).fill('Reading')
+  await heading('All saved')
+  assert(await page.$eval(search, (input) => document.activeElement === input && input.value === 'Reading'))
 
   assert.deepEqual(pageErrors, [])
   assert.deepEqual(externalRequests, [])
   console.log('Puppeteer passed the dashboard, compact controls, item details, Settings recovery, menu motion, mobile layouts, and theme checks.')
+  console.log('Audited 17 routes at desktop, tablet, and mobile widths and verified navigation focus.')
   console.log(`Screenshots saved to ${output}.`)
 } finally {
   await browser?.close()

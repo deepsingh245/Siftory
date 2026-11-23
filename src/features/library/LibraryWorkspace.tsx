@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { Archive, Ellipsis, ExternalLink, Trash2 } from 'lucide-react'
+import { PageLayout } from '@/components/layout/PageLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -56,16 +57,12 @@ type Props = {
 export function LibraryWorkspace({ route, data, query }: Props) {
   const [filters, setFilters] = useState<Omit<ItemFilters, 'query' | 'status'>>({ sort: 'recent' })
 
-  if (route.page === 'settings') return <section className="max-w-5xl space-y-5" aria-labelledby="settings-heading">
-    <div>
-      <h1 id="settings-heading" className="text-3xl font-semibold tracking-tight">Settings</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Manage your ChatGPT connection and local library storage.</p>
-    </div>
+  if (route.page === 'settings') return <PageLayout title="Settings" description="Manage your ChatGPT connection and local library storage.">
     <div className="grid items-start gap-4 @min-[54rem]:grid-cols-2">
       <ChatGptSettings />
       <StorageSettings refresh={data.refresh} libraryError={data.loading ? undefined : data.error} />
     </div>
-  </section>
+  </PageLayout>
   if (route.page === 'research') return <ResearchWorkspace sessionId={route.id} data={data} />
 
   if (data.loading) {
@@ -238,83 +235,80 @@ function LibraryListing({
   }
 
   return (
-    <section className="library-page" aria-labelledby="library-heading">
-      <div className="library-page-heading">
-        <div>
-          <h1 id="library-heading">{title}</h1>
-          <p className="library-page-description">{description}</p>
-        </div>
-        {canAdd && (
-          <Button type="button" onClick={() => setShowForm((visible) => !visible)}>
-            <span aria-hidden="true">+</span> Add item
-          </Button>
-        )}
-      </div>
+    <PageLayout title={title} description={description} actions={canAdd && (
+      <Button type="button" onClick={() => setShowForm((visible) => !visible)}>
+        <span aria-hidden="true">+</span> Add item
+      </Button>
+    )}>
 
       {actionError && <p className="library-error" role="alert">{actionError}</p>}
 
       {showForm && <ManualItemForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
 
-      <div className="library-toolbar">
-        {inbox && <FieldSelect label="Filter by review status" hideLabel className="sort-field" value={reviewFilter}
-          onValueChange={setReviewFilter} options={[
-            ['all', 'All review stages'], ['attention', 'Needs attention'], ['transcript', 'Has transcript'], ['analyzed', 'Analyzed'],
-          ]} />}
-        <FieldSelect<NonNullable<ItemFilters['sort']>> label="Sort items" hideLabel className="sort-field" value={filters.sort ?? 'recent'}
-          onValueChange={(sort) => onFiltersChange({ ...filters, sort })} options={[
-            ['recent', 'Newest first'], ['oldest', 'Oldest first'], ['title', 'Title A to Z'], ['updated', 'Recently updated'],
-          ]} />
-        <div className="view-toggle" role="group" aria-label="Item view">
-          <Button type="button" variant={view === 'list' ? 'secondary' : 'ghost'} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</Button>
-          <Button type="button" variant={view === 'grid' ? 'secondary' : 'ghost'} aria-pressed={view === 'grid'} onClick={() => setView('grid')}>Grid</Button>
+      <div className="space-y-2">
+        <div className="library-toolbar">
+          {inbox && <FieldSelect label="Filter by review status" hideLabel className="sort-field" value={reviewFilter}
+            onValueChange={setReviewFilter} options={[
+              ['all', 'All review stages'], ['attention', 'Needs attention'], ['transcript', 'Has transcript'], ['analyzed', 'Analyzed'],
+            ]} />}
+          <FieldSelect<NonNullable<ItemFilters['sort']>> label="Sort items" hideLabel className="sort-field" value={filters.sort ?? 'recent'}
+            onValueChange={(sort) => onFiltersChange({ ...filters, sort })} options={[
+              ['recent', 'Newest first'], ['oldest', 'Oldest first'], ['title', 'Title A to Z'], ['updated', 'Recently updated'],
+            ]} />
+          <div className="view-toggle" role="group" aria-label="Item view">
+            <Button type="button" variant={view === 'list' ? 'secondary' : 'ghost'} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</Button>
+            <Button type="button" variant={view === 'grid' ? 'secondary' : 'ghost'} aria-pressed={view === 'grid'} onClick={() => setView('grid')}>Grid</Button>
+          </div>
+          {canAdd && <Button className="library-analysis-toggle" variant={selectingAnalysis ? 'secondary' : 'outline'} type="button"
+            aria-pressed={selectingAnalysis} onClick={() => { setSelectingAnalysis((active) => !active); setAnalysisSelection([]); setShowAnalysisReview(false) }}>
+            {selectingAnalysis ? 'Cancel AI selection' : 'Select items for AI analysis'}
+          </Button>}
         </div>
-        {canAdd && <Button className="library-analysis-toggle" variant={selectingAnalysis ? 'secondary' : 'outline'} type="button"
-          aria-pressed={selectingAnalysis} onClick={() => { setSelectingAnalysis((active) => !active); setAnalysisSelection([]); setShowAnalysisReview(false) }}>
-          {selectingAnalysis ? 'Cancel AI selection' : 'Select items for AI analysis'}
-        </Button>}
+
+        {selectingAnalysis && <div className="analysis-selection-tools">
+          <span>{analysisSelection.length ? `${analysisSelection.length} of ${maxAnalysisBatchSize} selected` : `Select up to ${maxAnalysisBatchSize} items`}</span>
+          {analysisSelection.length > 0 && <Button type="button" disabled={showAnalysisReview} onClick={() => setShowAnalysisReview(true)}>Review selected text</Button>}
+        </div>}
+        {showAnalysisReview && analysisSelection.length > 0 && <AnalysisBatchReview itemIds={analysisSelection} data={data} onClose={() => setShowAnalysisReview(false)} />}
+
+        <FilterPanel data={data} filters={filters} activeCount={activeFilterCount} onChange={onFiltersChange} />
       </div>
 
-      {selectingAnalysis && <div className="analysis-selection-tools">
-        <span>{analysisSelection.length ? `${analysisSelection.length} of ${maxAnalysisBatchSize} selected` : `Select up to ${maxAnalysisBatchSize} items`}</span>
-        {analysisSelection.length > 0 && <Button type="button" disabled={showAnalysisReview} onClick={() => setShowAnalysisReview(true)}>Review selected text</Button>}
-      </div>}
-      {showAnalysisReview && analysisSelection.length > 0 && <AnalysisBatchReview itemIds={analysisSelection} data={data} onClose={() => setShowAnalysisReview(false)} />}
-
-      <FilterPanel data={data} filters={filters} activeCount={activeFilterCount} onChange={onFiltersChange} />
-
-      <div className="result-summary" aria-live="polite">
-        <span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'}</span>
-        {query && <span>matching “{query}”</span>}
-      </div>
-
-      {visibleItems.length ? (
-        <ul className={`saved-items saved-items--${view}${inbox && view === 'list' ? ' inbox-list' : ''}`}>
-          {visibleItems.map((item) => (
-            <li key={item.id} data-selected={analysisSelection.includes(item.id) || undefined}>
-              {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span className="visually-hidden">Select {displayTitle(item)} for AI analysis</span></label> : null}
-              {inbox && view === 'list' ? <InboxRow item={item} data={data} job={latestAnalysis.get(item.id)} onSave={() => setItemStatus(item, 'saved')} onDelete={() => deleteItem(item)} onProcessingError={setActionError} /> : <SavedItemCard
-                item={item}
-                data={data}
-                collections={data.collections}
-                categories={data.categories}
-                tags={data.tags}
-                onSaveToLibrary={item.status === 'inbox' ? () => setItemStatus(item, 'saved') : undefined}
-                onDelete={() => deleteItem(item)}
-              />}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="library-empty-state">
-          <span className="empty-state-mark" aria-hidden="true">{route.page === 'inbox' ? '○' : '✳'}</span>
-          <h2>{hasSearchOrFilters ? 'No matching items' : emptyHeading(route, canAdd)}</h2>
-          <p>{hasSearchOrFilters ? 'Try another phrase or change the filters.' : emptyDescription(route, canAdd)}</p>
-          {canAdd && !showForm && (
-            <button className="quiet-button" type="button" onClick={() => setShowForm(true)}>Add your first item</button>
-          )}
+      <div>
+        <div className="result-summary" aria-live="polite">
+          <span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'}</span>
+          {query && <span>matching “{query}”</span>}
         </div>
-      )}
-    </section>
+
+        {visibleItems.length ? (
+          <ul className={`saved-items saved-items--${view}${inbox && view === 'list' ? ' inbox-list' : ''}`}>
+            {visibleItems.map((item) => (
+              <li key={item.id} data-selected={analysisSelection.includes(item.id) || undefined}>
+                {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span className="visually-hidden">Select {displayTitle(item)} for AI analysis</span></label> : null}
+                {inbox && view === 'list' ? <InboxRow item={item} data={data} job={latestAnalysis.get(item.id)} onSave={() => setItemStatus(item, 'saved')} onDelete={() => deleteItem(item)} onProcessingError={setActionError} /> : <SavedItemCard
+                  item={item}
+                  data={data}
+                  collections={data.collections}
+                  categories={data.categories}
+                  tags={data.tags}
+                  onSaveToLibrary={item.status === 'inbox' ? () => setItemStatus(item, 'saved') : undefined}
+                  onDelete={() => deleteItem(item)}
+                />}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="library-empty-state">
+            <span className="empty-state-mark" aria-hidden="true">{route.page === 'inbox' ? '○' : '✳'}</span>
+            <h2>{hasSearchOrFilters ? 'No matching items' : emptyHeading(route, canAdd)}</h2>
+            <p>{hasSearchOrFilters ? 'Try another phrase or change the filters.' : emptyDescription(route, canAdd)}</p>
+            {canAdd && !showForm && (
+              <button className="quiet-button" type="button" onClick={() => setShowForm(true)}>Add your first item</button>
+            )}
+          </div>
+        )}
+      </div>
+    </PageLayout>
   )
 }
 
@@ -640,19 +634,15 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
   }
 
   return (
-    <section className="item-detail" aria-labelledby="item-heading">
+    <PageLayout title={displayTitle(item)} description={creator} context={<>
       <a className="back-link" href={item.status === 'inbox' ? '#/inbox' : '#/library'}>← Back to {item.status === 'inbox' ? 'Inbox' : 'All Saved'}</a>
-      <header className="item-detail-heading">
-        <div>
-          <p className="item-source-kicker"><span>{humanize(item.sourceType)}</span><span>{humanize(item.status)}</span></p>
-          <h1 id="item-heading">{displayTitle(item)}</h1>
-          {creator && <p className="item-source-creator">{creator}</p>}
-        </div>
-        <div className="detail-header-actions">
-          {originalUrl && <a className="quiet-button item-open-source" href={originalUrl} target="_blank" rel="noreferrer">Open source <span aria-hidden="true">↗</span></a>}
-          <button className="quiet-button" type="button" aria-expanded={editing} onClick={() => setEditing((value) => !value)}>{editing ? 'Stop editing' : 'Edit item'}</button>
-        </div>
-      </header>
+      <p className="item-source-kicker"><span>{humanize(item.sourceType)}</span><span>{humanize(item.status)}</span></p>
+    </>} actions={<>
+      {originalUrl && <Button asChild variant="outline">
+        <a href={originalUrl} target="_blank" rel="noreferrer">Open source <ExternalLink aria-hidden="true" /></a>
+      </Button>}
+      <Button variant="outline" type="button" aria-expanded={editing} onClick={() => setEditing((value) => !value)}>{editing ? 'Stop editing' : 'Edit item'}</Button>
+    </>}>
       {error && <p className="library-error" role="alert">{error}</p>}
       {editing && <ManualItemForm initialItem={item} onCancel={() => setEditing(false)} onSave={save} />}
       <div hidden={editing}>
@@ -700,7 +690,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
           <Button className="item-remove text-destructive hover:text-destructive" variant="ghost" type="button" onClick={() => void remove()}><Trash2 aria-hidden="true" />Remove from library</Button>
         </div>
       </div>
-    </section>
+    </PageLayout>
   )
 }
 
@@ -774,8 +764,7 @@ function OrganizerPage({ kind, data }: { kind: OrganizerKind; data: LibraryData 
   }
 
   return (
-    <section className="organizer-page" aria-labelledby="organizer-heading">
-      <div className="library-page-heading"><div><p className="library-eyebrow">ORGANIZE YOUR LIBRARY</p><h1 id="organizer-heading">{config.title}</h1><p className="library-page-description">Group saved items in a way that makes sense to you.</p></div></div>
+    <PageLayout title={config.title} description="Group saved items in a way that makes sense to you.">
       <form className="organizer-create" onSubmit={create}>
         <div><h2>Create a {config.noun}</h2><p>These labels are yours to name and change.</p></div>
         <div className="organizer-create-fields"><TextField label={`${humanize(config.noun)} name`} value={name} onChange={setName} placeholder={`Name this ${config.noun}`} />{kind !== 'tags' && <TextField label="Description" value={description} onChange={setDescription} placeholder="Optional" />}</div>
@@ -787,7 +776,7 @@ function OrganizerPage({ kind, data }: { kind: OrganizerKind; data: LibraryData 
           <OrganizerRecordRow key={record.id} kind={kind} record={record} count={data.items.filter((item) => item[relationKey(kind)].includes(record.id)).length} data={data} />
         )) : <div className="library-empty-state"><span className="empty-state-mark" aria-hidden="true">✳</span><h2>No {config.title.toLocaleLowerCase()} yet.</h2><p>Create one to organize related items.</p></div>}
       </div>
-    </section>
+    </PageLayout>
   )
 }
 
@@ -868,18 +857,20 @@ function CollectionDetail({ collection, data }: { collection: Collection; data: 
     }
   }
   return (
-    <section className="organizer-page" aria-labelledby="collection-heading">
-      <a className="back-link" href="#/collections">← All collections</a>
-      <div className="library-page-heading"><div><p className="library-eyebrow">COLLECTION</p><h1 id="collection-heading">{collection.name}</h1><p className="library-page-description">{items.length} {items.length === 1 ? 'saved item' : 'saved items'}</p></div><button className="quiet-button danger-button" type="button" onClick={remove}>Delete collection</button></div>
+    <PageLayout title={collection.name} description={`${items.length} ${items.length === 1 ? 'saved item' : 'saved items'}`}
+      context={<a className="back-link" href="#/collections">← All collections</a>}
+      actions={<Button variant="outline" className="text-destructive" type="button" onClick={remove}>Delete collection</Button>}>
       {error && <p className="library-error" role="alert">{error}</p>}
       <form className="collection-edit" onSubmit={save}><TextField label="Collection name" value={name} onChange={setName} /><TextField label="Description" value={description} onChange={setDescription} /><button className="primary-button" type="submit">Save collection</button></form>
       {items.length ? <ul className="saved-items saved-items--list">{filterAndSortItems(items).map((item) => <li key={item.id}><SavedItemCard item={item} data={data} collections={data.collections} categories={data.categories} tags={data.tags} onDelete={() => { if (window.confirm(`Remove “${displayTitle(item)}” from this library?`)) void data.actions.deleteItem(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'The item could not be removed.')) }} /></li>)}</ul> : <div className="library-empty-state"><h2>This collection is empty.</h2><p>Add it to an item from that item's detail page.</p></div>}
-    </section>
+    </PageLayout>
   )
 }
 
 function NotFound({ kind, href }: { kind: string; href: string }) {
-  return <div className="library-empty-state"><h1>This {kind} is not available.</h1><a className="primary-button" href={href}>Return to the library</a></div>
+  return <PageLayout title={`This ${kind} is not available.`} actions={
+    <Button asChild><a href={href}>Return to the library</a></Button>
+  } />
 }
 
 function relationKey(kind: OrganizerKind): 'collectionIds' | 'categoryIds' | 'tagIds' {

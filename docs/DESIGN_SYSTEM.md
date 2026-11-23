@@ -45,7 +45,9 @@ Standard buttons, text inputs, and select triggers use the shared `--control-hei
 
 ## Layout and spacing
 
-- Use a consistent spacing scale.
+- The workspace uses the full width beside the sidebar. The global toolbar and page content share `--workspace-gutter`.
+- Render each route with `PageLayout` for its heading, description, page actions, and section spacing. Keep route titles in the page body and use the toolbar for global controls.
+- Keep reading-width limits on individual text sections such as transcripts and descriptions.
 - Desktop: compact persistent sidebar, flexible content region and optional detail panel.
 - Mobile: compact header and drawer/bottom navigation where appropriate.
 - Content width should support reading without excessively long lines.

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import { PageLayout } from '@/components/layout/PageLayout'
 import { MAX_CONFIRMED_ROWS, MAX_IMPORT_DOCUMENT_BYTES, MAX_IMPORT_ROWS, MAX_IMPORT_TOTAL_BYTES, MAX_SOURCE_FILE_BYTES, fingerprintBlob, formatBytes, parseBookmarksHtml, parseInstagramJson, parseManualUrl, parseSourceFile, toImportedItems } from '../../domain/imports'
 import type { ImportKind, ImportParseResult, ImportRow } from '../../domain/imports'
 import { displayTitle } from '../../domain/library'
@@ -241,14 +242,7 @@ export function ImportPage({ data }: { data: LibraryData }) {
   const fileAccept = kind === 'instagram' ? '.json,application/json' : kind === 'bookmarks' ? '.html,.htm,text/html' : '.pdf,.txt,application/pdf,text/plain'
 
   return (
-    <section className="library-page import-page" aria-labelledby="import-heading" aria-busy={working || saving}>
-      <div className="library-page-heading">
-        <div>
-          <p className="library-eyebrow">LOCAL IMPORT</p>
-          <h1 id="import-heading">Bring things in</h1>
-          <p className="library-page-description">Review every record before it enters your Inbox. Your files stay on this device.</p>
-        </div>
-      </div>
+    <PageLayout title="Bring things in" description="Review every record before it enters your Inbox. Your files stay on this device." aria-busy={working || saving}>
 
       <fieldset className="import-source-picker" disabled={working || saving}>
         <legend>Choose what to import</legend>
@@ -329,6 +323,6 @@ export function ImportPage({ data }: { data: LibraryData }) {
           <p className="import-atomicity-note">Selected records and source files save together. A storage error rolls back the current batch, leaving it available to retry.</p>
         </section>
       )}
-    </section>
+    </PageLayout>
   )
 }

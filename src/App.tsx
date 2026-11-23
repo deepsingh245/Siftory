@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import {
   BookOpen, Clock3, FolderClosed, Grid2X2, Inbox, LayoutDashboard,
   ListTodo, Moon, Search, Settings, Shapes, Sun, Tag, Upload, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
@@ -116,8 +116,8 @@ function WorkspaceSidebar({ route }: { route: AppRoute }) {
 
 type Appearance = 'dark' | 'light'
 
-function SiteHeader({ title, query, onQuery, appearance, onToggleTheme, showImport }: {
-  title: string
+function SiteHeader({ searchInput, query, onQuery, appearance, onToggleTheme, showImport }: {
+  searchInput: RefObject<HTMLInputElement | null>
   query: string
   onQuery: (value: string) => void
   appearance: Appearance
@@ -151,22 +151,18 @@ function SiteHeader({ title, query, onQuery, appearance, onToggleTheme, showImpo
   }, [openMobile])
 
   return (
-    <header className="workspace-topline workspace-header">
-      <div className="workspace-header-nav">
-        <SidebarTrigger
-          ref={trigger}
-          type="button"
-          aria-label="Toggle navigation"
-          aria-expanded={isMobile ? openMobile : open}
-          aria-controls={isMobile && !openMobile ? undefined : 'workspace-navigation'}
-          className="size-control"
-        />
-        <Separator orientation="vertical" className="data-[orientation=vertical]:h-5" />
-      </div>
-      <p className="workspace-header-title">{title}</p>
+    <header className="workspace-header">
+      <SidebarTrigger
+        ref={trigger}
+        type="button"
+        aria-label="Toggle navigation"
+        aria-expanded={isMobile ? openMobile : open}
+        aria-controls={isMobile && !openMobile ? undefined : 'workspace-navigation'}
+        className="size-control"
+      />
       <form className="workspace-search" role="search" onSubmit={(event) => event.preventDefault()}>
         <Search size={16} aria-hidden="true" />
-        <Input type="search" aria-label="Search your library" placeholder="Search your library" value={query} onChange={(event) => onQuery(event.target.value)} />
+        <Input ref={searchInput} type="search" aria-label="Search your library" placeholder="Search your library" value={query} onChange={(event) => onQuery(event.target.value)} />
       </form>
       <div className="workspace-header-actions">
         {showImport && <Button asChild variant="outline" className="workspace-import-link">
@@ -191,6 +187,7 @@ function App() {
   const library = useLibraryData()
   const previousRoute = useRef(route)
   const main = useRef<HTMLElement>(null)
+  const searchInput = useRef<HTMLInputElement>(null)
   const title = routeTitle(route)
 
   useEffect(() => {
@@ -208,7 +205,7 @@ function App() {
 
   useEffect(() => {
     document.title = `${title} · Siftory`
-    if (previousRoute.current !== route && document.activeElement?.tagName !== 'INPUT') {
+    if (previousRoute.current !== route && document.activeElement !== searchInput.current) {
       main.current?.focus({ preventScroll: true })
       window.scrollTo({ top: 0, behavior: 'instant' })
     }
@@ -224,24 +221,26 @@ function App() {
     <SidebarProvider defaultOpen={sidebarOpen} className="app-shell" data-theme={appearance}>
       <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); main.current?.focus() }}>Skip to content</a>
       <WorkspaceSidebar route={route} />
-      <SidebarInset id="main" ref={main} tabIndex={-1} className="workspace-inset">
-        <SiteHeader
-          title={title}
-          query={query}
-          onQuery={searchLibrary}
-          appearance={appearance}
-          onToggleTheme={() => setAppearance((current) => current === 'dark' ? 'light' : 'dark')}
-          showImport={route.page !== 'dashboard'}
-        />
-        <div className="workspace">
-          {route.page === 'dashboard' ? (
-            <Suspense fallback={<p role="status">Loading dashboard…</p>}><Dashboard data={library} /></Suspense>
-          ) : (
-            <>
-              {route.page !== 'settings' && library.error && !library.loading && <div className="storage-error" role="alert"><span>{library.error}</span><Button variant="outline" type="button" onClick={() => void library.refresh()}>Retry</Button></div>}
-              <Suspense fallback={<p role="status">Opening your library…</p>}><LibraryWorkspace route={route} data={library} query={query} /></Suspense>
-            </>
-          )}
+      <SidebarInset asChild className="workspace-inset">
+        <div>
+          <SiteHeader
+            searchInput={searchInput}
+            query={query}
+            onQuery={searchLibrary}
+            appearance={appearance}
+            onToggleTheme={() => setAppearance((current) => current === 'dark' ? 'light' : 'dark')}
+            showImport={route.page !== 'dashboard' && route.page !== 'import'}
+          />
+          <main id="main" ref={main} tabIndex={-1} className="workspace">
+            {route.page === 'dashboard' ? (
+              <Suspense fallback={<p role="status">Loading dashboard…</p>}><Dashboard data={library} /></Suspense>
+            ) : (
+              <>
+                {route.page !== 'settings' && library.error && !library.loading && <div className="storage-error" role="alert"><span>{library.error}</span><Button variant="outline" type="button" onClick={() => void library.refresh()}>Retry</Button></div>}
+                <Suspense fallback={<p role="status">Opening your library…</p>}><LibraryWorkspace route={route} data={library} query={query} /></Suspense>
+              </>
+            )}
+          </main>
         </div>
       </SidebarInset>
     </SidebarProvider>

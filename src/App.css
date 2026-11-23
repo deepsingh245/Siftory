@@ -4,6 +4,8 @@
 }
 
 .app-shell .workspace-inset {
+  --workspace-gutter: clamp(.75rem, 1.35vw, 1.5rem);
+  --page-section-gap: clamp(1rem, 1.75vw, 1.5rem);
   min-width: 0;
   border: 1px solid var(--border);
   container-type: inline-size;
@@ -54,41 +56,27 @@
   display: none;
 }
 
-.workspace-header.workspace-topline {
+.workspace-header {
   display: grid;
-  grid-template-columns: auto minmax(6rem, 1fr) minmax(10rem, 20rem) auto;
-  grid-template-areas: 'nav title search actions';
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: .6rem 1rem;
-  margin: 0;
-  padding: .7rem clamp(.75rem, 2.35vw, 2rem);
+  gap: .6rem;
+  padding: .65rem var(--workspace-gutter);
   border-block-end: 1px solid var(--border);
 }
 
-.workspace-header-nav,
 .workspace-header-actions {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: .5rem;
-}
-
-.workspace-header-nav { grid-area: nav; }
-.workspace-header-actions { grid-area: actions; justify-self: end; }
-
-.workspace-header-title {
-  grid-area: title;
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-size: .9375rem;
-  font-weight: 600;
+  justify-self: end;
 }
 
 .workspace-search {
   position: relative;
-  grid-area: search;
   min-width: 0;
+  width: min(100%, 24rem);
 }
 
 .workspace-search > svg {
@@ -107,14 +95,62 @@
 }
 
 .workspace {
-  width: min(100%, 90rem);
+  width: 100%;
   min-width: 0;
-  margin-inline: auto;
-  padding: clamp(1rem, 2.5vw, 2rem) clamp(.75rem, 2.35vw, 2rem) 2rem;
+  padding: var(--page-section-gap) var(--workspace-gutter) 2rem;
 }
 
-.app-shell .workspace > :is(.library-page, .organizer-page, .item-detail) {
-  padding-block-start: 0;
+/* The main landmark is focused for route changes and the skip link. */
+.workspace:focus {
+  outline: none;
+}
+
+.workspace-page {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-section-gap);
+}
+
+.page-context {
+  display: grid;
+  justify-items: start;
+  gap: .5rem;
+  margin-block-end: .5rem;
+}
+
+.page-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+}
+
+.page-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(1.75rem, 1.35rem + 1vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.page-description {
+  max-width: 65ch;
+  margin: .375rem 0 0;
+  color: var(--muted-foreground);
+  font-size: .9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
 }
 
 @media (max-width: 767px) {
@@ -127,13 +163,7 @@
   }
 }
 
-@container (max-width: 620px) {
-  .workspace-header.workspace-topline {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'nav title actions' 'search search search';
-    column-gap: .6rem;
-  }
-
+@container (max-width: 36rem) {
   .workspace-header .workspace-import-link {
     display: none;
   }

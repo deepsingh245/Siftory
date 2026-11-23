@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { AlertCircle, ArrowDownToLine, ArrowRight, ArrowUpRight, Files, Inbox, LibraryBig, ListChecks, ScrollText } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { PageLayout } from '@/components/layout/PageLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -190,16 +191,11 @@ export function Dashboard({ data }: { data: LibraryData }) {
       icon: ListChecks, href: routeHref({ page: 'queue' }), action: 'Processing queue',
     },
   ]
-  return <section aria-labelledby="dashboard-heading" className="@container min-w-0 space-y-5 pt-1 pb-8">
-    <header className="flex flex-wrap items-start justify-between gap-4 py-2 @lg:items-center">
-      <div className="min-w-0">
-        <h1 id="dashboard-heading" className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Dashboard</h1>
-        <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">Review recent saves and see what needs your attention.</p>
-      </div>
+  return <PageLayout className="@container" title="Dashboard" description="Review recent saves and see what needs your attention." actions={
       <Button asChild>
         <a href={routeHref({ page: 'import' })}><ArrowDownToLine aria-hidden="true" /> Import sources</a>
       </Button>
-    </header>
+  }>
     {data.loading ? <LoadingDashboard /> : data.error ? <Card>
       <CardHeader>
         <h2 className="flex items-center gap-2 font-semibold"><AlertCircle className="size-4" aria-hidden="true" /> The library could not be opened</h2>
@@ -213,5 +209,5 @@ export function Dashboard({ data }: { data: LibraryData }) {
       <LibraryActivity items={data.items} />
       <RecentItems items={stats.recent} />
     </>}
-  </section>
+  </PageLayout>
 }

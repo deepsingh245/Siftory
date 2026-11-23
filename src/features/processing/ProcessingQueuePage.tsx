@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { PageLayout } from '@/components/layout/PageLayout'
+import { Button } from '@/components/ui/button'
 import { Disclosure } from '@/components/ui/disclosure'
 import type { ProcessingJob } from '../../domain/processing'
 import { displayTitle } from '../../domain/library'
@@ -28,15 +30,8 @@ export function ProcessingQueuePage({ data }: { data: LibraryData }) {
   }
 
   return (
-    <section className="library-page processing-queue-page" aria-labelledby="processing-queue-heading" aria-busy={starting}>
-      <div className="library-page-heading">
-        <div>
-          <p className="library-eyebrow">LOCAL WORK</p>
-          <h1 id="processing-queue-heading">Processing queue</h1>
-          <p className="library-page-description">Review job status and start supported work while Siftory is open.</p>
-        </div>
-        <button className="primary-button" type="button" onClick={() => void startQueue()} disabled={starting || queuedCount === 0}>{starting ? 'Processing queue…' : `Start queue (${queuedCount})`}</button>
-      </div>
+    <PageLayout title="Processing queue" description="Review job status and start supported work while Siftory is open." aria-busy={starting}
+      actions={<Button type="button" onClick={() => void startQueue()} disabled={starting || queuedCount === 0}>{starting ? 'Processing queue…' : `Start queue (${queuedCount})`}</Button>}>
 
       <p className="processing-queue-boundary">Text extraction handles local .txt files only. PDF extraction, URLs, video, and transcription are not available. Closing the app pauses work; no background processing is promised.</p>
       {error && <p className="library-error" role="alert">{error}</p>}
@@ -58,7 +53,7 @@ export function ProcessingQueuePage({ data }: { data: LibraryData }) {
         </div>
       )}
       <AnalysisQueuePanel data={data} />
-    </section>
+    </PageLayout>
   )
 }
 

@@ -14,32 +14,8 @@
   translate: 0;
 }
 
-.workspace-topline {
-  margin-bottom: clamp(1.5rem, 3vw, 3rem);
-}
-
-.global-search {
-  min-height: 44px;
-}
-
 .sidebar {
   overflow-y: auto;
-}
-
-.library-page-heading h1,
-.item-detail-heading h1 {
-  font-weight: 500;
-  letter-spacing: -.035em;
-  line-height: 1.12;
-  overflow-wrap: anywhere;
-}
-
-.library-page-description {
-  max-width: 58ch;
-}
-
-.library-filter-disclosure {
-  margin-block: .5rem 1rem;
 }
 
 .inbox-list {
@@ -271,11 +247,6 @@
 }
 
 @media (max-width: 680px) {
-  .workspace .workspace-topline {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .inbox-row {
     grid-template-columns: minmax(0, 1fr) auto;
     padding-inline: .25rem;

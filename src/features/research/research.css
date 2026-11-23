@@ -1,11 +1,6 @@
-.research-page {
-  padding: 42px 0 56px;
-}
-
 .research-question-form,
 .research-review,
 .research-session {
-  margin: 0 0 20px;
   padding: clamp(15px, 2vw, 22px);
   border: 1px solid var(--border);
   border-radius: 11px;
@@ -222,10 +217,6 @@
 }
 
 @media (max-width: 680px) {
-  .research-page {
-    padding-top: 35px;
-  }
-
   .research-question-actions,
   .research-session-heading {
     align-items: flex-start;
