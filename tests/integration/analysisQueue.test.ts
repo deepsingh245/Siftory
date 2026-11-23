@@ -118,6 +118,23 @@ describe('persistent AI analysis queue', () => {
     expect((await repository.getAnalysisJobs()).filter((job) => job.status === 'needs-attention')).toHaveLength(1)
   })
 
+  it('persists the server diagnostic and transcript step on a failed job', async () => {
+    const item = await addCaption('diagnostic')
+    await repository.attachTranscript(await createTranscriptContent(item.id, parseTranscript('Important words in the recording.', 'text'), 'pasted'))
+    const review = await prepareAnalysisReview(repository, [item.id], 'gpt-6-luna')
+    await repository.enqueueAnalysisJobs([review.items[0].job!])
+    const diagnostic = { requestId: 'local-request-id', stage: 'validation', field: 'summary.evidence', reason: 'Quote is not an exact match.' }
+    const provider: Pick<typeof chatgpt, 'status' | 'analyze'> = {
+      status: async () => ({ state: 'connected', connectionId: 'current', models: [] }),
+      analyze: async () => { throw new ChatGptRequestError('Invalid quote.', 502, diagnostic) },
+    }
+    await runReviewedAnalysis(repository, review, 'current', provider, async () => undefined)
+    await repository.close()
+    expect((await repository.getAnalysisJobs())[0]).toMatchObject({
+      status: 'failed', diagnostic: { ...diagnostic, status: 502, step: 'source-001' },
+    })
+  })
+
   it('marks a queued review changed if its source text has changed', async () => {
     const item = await addCaption('changed')
     const review = await prepareAnalysisReview(repository, [item.id], 'gpt-6-sol')
@@ -141,6 +158,7 @@ describe('persistent AI analysis queue', () => {
     await repository.enqueueAnalysisJobs(review.items.map((entry) => entry.job!))
 
     let failOnMerge = true
+    let reportedOmission = false
     const provider = {
       status: vi.fn(async () => ({ state: 'connected', connectionId: 'current', models: [] } as const)),
       analyze: vi.fn(async (_model: string, text: string, _connectionId: string) => {
@@ -148,7 +166,9 @@ describe('persistent AI analysis queue', () => {
         const evidence = text.startsWith('Combine these adjacent')
           ? text.split('LEFT ANALYSIS\nSummary: ')[1]?.split('\nEvidence: ')[1]?.split('\n')[0] ?? 'missing evidence'
           : text.slice(0, 40)
-        return { result: { summary: { text: 'A transcript summary.', evidence }, points: [], categories: [], mentions: [] } }
+        const hasOmittedFindings = !reportedOmission
+        reportedOmission = true
+        return { result: { summary: { text: 'A transcript summary.', evidence }, points: [], categories: [], mentions: [] }, hasOmittedFindings }
       }),
     } as unknown as Pick<typeof chatgpt, 'status' | 'analyze'>
 
@@ -157,6 +177,7 @@ describe('persistent AI analysis queue', () => {
     const interrupted = (await repository.getAnalysisJobs())[0]
     const completedBeforeRetry = interrupted.completedSteps?.length ?? 0
     expect(completedBeforeRetry).toBeGreaterThan(1)
+    expect(interrupted.completedSteps?.[0].hasOmittedFindings).toBe(true)
     failOnMerge = false
     await repository.setAnalysisJobQueueState(interrupted.id, 'queued')
     const queued = await repository.getAnalysisJobs()
@@ -167,5 +188,6 @@ describe('persistent AI analysis queue', () => {
     expect(provider.analyze.mock.calls.length - callsBeforeRetry).toBe(review.items[0].requestCount! - completedBeforeRetry)
     expect((await repository.getAnalysisJobs())[0].status).toBe('completed')
     expect((await repository.getAnalyses(item.id))[0].kind).toBe('transcript')
+    expect((await repository.getAnalyses(item.id))[0].hasOmittedFindings).toBe(true)
   })
 })

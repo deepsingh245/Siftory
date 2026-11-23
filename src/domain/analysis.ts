@@ -32,6 +32,7 @@ export type Analysis = {
   createdAt: string
   result: AnalysisResult
   links: string[]
+  hasOmittedFindings?: boolean
 }
 
 export function prepareAnalysisInput(item: SavedItem, extracted?: ExtractedContent): AnalysisInput | undefined {
@@ -84,30 +85,51 @@ export function getMentionedLinks(text: string, truncated = false): string[] {
   return [...links]
 }
 
-export function validateAnalysis(value: unknown, source: string): AnalysisResult {
-  const invalid = () => new Error('The analysis did not include valid information with matching source quotes. You can retry with a different model.')
-  if (!value || typeof value !== 'object') throw invalid()
+export class AnalysisValidationError extends Error {
+  readonly field: string
+  readonly reason: string
+  constructor(field: string, reason: string) {
+    super('The analysis did not include valid information with matching source quotes. You can retry with a different model.')
+    this.field = field
+    this.reason = reason
+  }
+}
+
+const unmatchedSourceQuote = 'Quote is not an exact match in the supplied text.'
+
+export function validateAnalysis(value: unknown, source: string, onUnmatchedFinding?: (field: string) => void): AnalysisResult {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AnalysisValidationError('result', 'Expected a JSON object.')
   const result = value as Record<string, unknown>
 
-  function note(entry: unknown, maxLength: number): EvidenceNote {
-    if (!entry || typeof entry !== 'object') throw invalid()
+  function note(entry: unknown, maxLength: number, field: string): EvidenceNote {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new AnalysisValidationError(field, 'Expected an object with text and evidence.')
     const { text, evidence } = entry as Record<string, unknown>
-    if (typeof text !== 'string' || !text.trim() || text.length > maxLength ||
-      typeof evidence !== 'string' || !evidence.trim() || evidence.length > 240 || !source.includes(evidence)) {
-      throw invalid()
-    }
+    if (typeof text !== 'string' || !text.trim()) throw new AnalysisValidationError(`${field}.text`, 'Expected non-empty text.')
+    if (text.length > maxLength) throw new AnalysisValidationError(`${field}.text`, `Text exceeds ${maxLength} characters.`)
+    if (typeof evidence !== 'string' || !evidence.trim()) throw new AnalysisValidationError(`${field}.evidence`, 'Expected a non-empty source quote.')
+    if (evidence.length > 240) throw new AnalysisValidationError(`${field}.evidence`, 'Quote exceeds 240 characters.')
+    if (!source.includes(evidence)) throw new AnalysisValidationError(`${field}.evidence`, unmatchedSourceQuote)
     return { text: text.trim(), evidence }
   }
 
-  function notes(list: unknown, maxItems: number, maxLength: number): EvidenceNote[] {
-    if (!Array.isArray(list) || list.length > maxItems) throw invalid()
-    return list.map((entry) => note(entry, maxLength))
+  function notes(list: unknown, maxItems: number, maxLength: number, field: string): EvidenceNote[] {
+    if (!Array.isArray(list)) throw new AnalysisValidationError(field, 'Expected an array.')
+    if (list.length > maxItems) throw new AnalysisValidationError(field, `Expected at most ${maxItems} entries.`)
+    return list.flatMap((entry, index) => {
+      try {
+        return [note(entry, maxLength, `${field}[${index}]`)]
+      } catch (error) {
+        if (!onUnmatchedFinding || !(error instanceof AnalysisValidationError) || error.reason !== unmatchedSourceQuote) throw error
+        onUnmatchedFinding(error.field)
+        return []
+      }
+    })
   }
 
   return {
-    summary: note(result.summary, 1000),
-    points: notes(result.points, 6, 360),
-    categories: notes(result.categories, 5, 80),
-    mentions: notes(result.mentions, 8, 120),
+    summary: note(result.summary, 1000, 'summary'),
+    points: notes(result.points, 6, 360, 'points'),
+    categories: notes(result.categories, 5, 80, 'categories'),
+    mentions: notes(result.mentions, 8, 120, 'mentions'),
   }
 }

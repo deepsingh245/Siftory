@@ -52,7 +52,9 @@ export function createMediaMiddleware(scheme = 'http', root = defaultRoot) {
     const origin = localOrigin(request, scheme)
     const pathname = request.url?.split('?', 1)[0]
     if (!pathname?.startsWith('/api/media/')) return next()
-    if (!origin || request.method !== 'GET' || request.headers['x-siftory-request'] !== '1' ||
+    const nativeAudio = pathname === '/api/media/audio' && request.headers['sec-fetch-site'] === 'same-origin' &&
+      request.headers['sec-fetch-dest'] === 'audio'
+    if (!origin || request.method !== 'GET' || (request.headers['x-siftory-request'] !== '1' && !nativeAudio) ||
       (request.headers.origin && request.headers.origin !== origin) ||
       (request.headers['sec-fetch-site'] && request.headers['sec-fetch-site'] !== 'same-origin')) {
       return sendJson(response, 403, { error: 'Local media is available only from Siftory on this device.' })
@@ -95,8 +97,29 @@ export function createMediaMiddleware(scheme = 'http', root = defaultRoot) {
         const path = join(folder, 'audio.wav')
         const info = await regularFile(path, maxAudioBytes)
         if (!info) return sendJson(response, 404, { error: 'Local audio is unavailable.' })
-        response.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': String(info.size), 'Content-Disposition': `attachment; filename="${key}.wav"`, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
-        createReadStream(path).pipe(response)
+        const headers = {
+          'Content-Type': 'audio/wav', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin',
+        }
+        if (request.headers.range) {
+          const range = /^bytes=(\d+)-(\d*)$/u.exec(request.headers.range)
+          const start = Number(range?.[1])
+          const end = range?.[2] ? Math.min(Number(range[2]), info.size - 1) : info.size - 1
+          if (!range || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= info.size || end < start) {
+            response.writeHead(416, { ...headers, 'Content-Range': `bytes */${info.size}` })
+            return response.end()
+          }
+          response.writeHead(206, { ...headers, 'Content-Length': String(end - start + 1), 'Content-Range': `bytes ${start}-${end}/${info.size}` })
+          const stream = createReadStream(path, { start, end })
+          stream.on('error', () => response.destroy())
+          response.once('close', () => stream.destroy())
+          return stream.pipe(response)
+        }
+        response.writeHead(200, { ...headers, 'Content-Length': String(info.size) })
+        const stream = createReadStream(path)
+        stream.on('error', () => response.destroy())
+        response.once('close', () => stream.destroy())
+        stream.pipe(response)
         return
       }
       return sendJson(response, 404, { error: 'Unknown local media action.' })

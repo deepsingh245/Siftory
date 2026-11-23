@@ -60,7 +60,7 @@ The Vite dev and preview servers host the AI routes on the app origin. `server/c
 
 After explicit confirmation, item detail or the batch review sends only the displayed caption, extracted text, or attached transcript and the selected model. A batch review shows the exact text, account, model, and transcript request count before confirmation and runs one request at a time while the app and local server are open. Transcripts up to 100,000 characters are split into deterministic 14,000-character or subtitle-segment chunks and reduced pairwise. Validated step results persist after each request and remain tied to transcript, parser, chunker, analysis, and model versions. The browser binds consent to an opaque connection ID; a changed or expired connection requires a new review. The server checks size and scope, requests a streamed response, and validates its structure and quoted evidence. The browser saves results and durable queue records in IndexedDB schema version 7. Timed evidence is linked only when its exact quote occurs within a supplied subtitle segment. Machine-generated transcripts require user review; Siftory does not verify spoken words.
 
-The current session expires or ends on disconnect or server restart. Account persistence and credential renewal are pending. The library and local extraction stay available with AI disconnected.
+Phase 8 replaces the original in-memory-only session on Windows. The local server seals the OAuth session with DPAPI for the current Windows account. The browser keeps only an opaque HttpOnly cookie. The server binds the cookie to the original address, restores the connection after restart, serializes changes to rotating refresh tokens, and requires consent before inference. If protection is unavailable, the session works in memory and the Settings page explains the restart limit. A grant can expire or be revoked. See [OpenAI's session guide](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions).
 
 Core library use without AI remains supported. Optional future providers must be evaluated separately; an API-key provider is not assumed or silently enabled.
 
@@ -68,9 +68,9 @@ Do not select or implement a paid API as a hidden requirement.
 
 ## Local persistence
 
-Use IndexedDB for structured records and metadata. Binary media storage should be evaluated carefully due to browser quota and backup size. Avoid copying large video files by default.
+IndexedDB is the legacy store before cutover. The Phase 8 migration saves a consistent local snapshot, selects the seven imports from the original export, and inserts related data in one SQLite transaction. Only a successful read-back check activates SQLite. Runtime writes after cutover use the same repository rules over loopback. See [the migration guide](phases/PHASE-8-LOCAL-PERSISTENCE-AND-WORKSPACE.md).
 
-Browser storage is specific to the browser/device and may be cleared or evicted. Make manual export and restore first-class.
+SQLite uses a rollback journal because ordinary use has one local server and brief serialized writes. Content-addressed attachments live on disk, and WAV files keep their existing media paths. SQLite reconstructs the text of timed transcripts from segments when that exactly preserves the original. Settings reports disk use. The initial cutover leaves IndexedDB and source files available for recovery. A general restore workflow remains planned.
 
 ## Processing lifecycle
 

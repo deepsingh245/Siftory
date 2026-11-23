@@ -26,6 +26,8 @@ Initial brand tokens:
 | Sage | `#A5B8A0` | Primary accent |
 | Amber | `#D6A66D` | Highlights and selected states |
 
+The Phase 8 workspace uses deep graphite `#151A19` and parchment `#F4F1E8` as canvas colors. Sage indicates useful actions and saved results. Muted text and semantic labels carry status in both themes.
+
 Create semantic tokens rather than scattering raw hex values:
 - `--background`
 - `--foreground`
@@ -52,6 +54,8 @@ Preferred direction:
 - Use a consistent type scale.
 - Prioritise line length and line height for transcripts and articles.
 - Avoid tiny metadata text and inconsistent heading sizes.
+
+The workspace defaults to 16 px UI text. Metadata uses 13–15 px depending on hierarchy. Transcripts use 17 px with generous line spacing. Georgia and Cambria give page and reading section headings a quieter editorial hierarchy while controls remain sans serif.
 
 ## Layout and spacing
 

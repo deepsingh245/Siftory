@@ -6,6 +6,13 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 | Decision | Status | Rationale |
 |---|---|---|
+| Use Node SQLite for the local library after verified migration | Confirmed (2026-11-22) | The Vite server opens a single file on disk. Preserve the browser source and private backup, migrate exactly the seven selected imports, and keep attachment and audio bytes outside SQLite. |
+| Persist ChatGPT grants in Windows DPAPI | Confirmed (2026-11-22) | An origin-bound, persistent HttpOnly cookie identifies the local session. OAuth credentials stay in the Windows-protected record. Rotate on supported OpenAI refresh and keep per-request consent. Supersedes the session-only Phase 5 decision. |
+| Offer reviewed app listing lookup alongside analysis | Confirmed (2026-11-23) | Check selected evidence-based names or store listing IDs using Apple's public catalog and direct Google Play listing pages. Keep possible name matches separate from quoted source URLs. |
+| Organize saved material around reading and review | Confirmed (2026-11-22) | Use readable text, compact Inbox rows, transcript confirmation and timed audio, and explicit analysis readiness. Keep the dark and light palettes grounded in the Quiet Editorial Research Desk. |
+
+| Decision | Status | Rationale |
+|---|---|---|
 | Product name is Siftory | Confirmed | Chosen product identity |
 | Tagline is “Save less. Understand more.” | Confirmed | Communicates the product promise |
 | Local-first application | Confirmed | User ownership and low operating cost |
@@ -58,7 +65,7 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 1. Long-term database migration and backup/restore format.
 2. Local transcription feasibility on the user's hardware.
-3. Choose how to preserve ChatGPT account registrations and protect renewable credentials across local server restarts. The first release slice uses an in-memory session.
+3. Evaluate native credential storage on other operating systems if support is needed.
 4. Semantic search/embedding provider and storage cost.
 5. Which source adapters can reliably extract actual content under legitimate access conditions.
 6. Whether any local helper process is justified for protected credentials or local model execution.

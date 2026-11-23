@@ -35,7 +35,7 @@
 .research-history span,
 .research-source-status {
   color: var(--muted-strong);
-  font-size: 10px;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
@@ -52,7 +52,7 @@
 .research-review-heading p {
   margin: 0;
   color: var(--muted-strong);
-  font-size: 10px;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
@@ -113,7 +113,7 @@
 .research-source-toggle strong,
 .research-session-sources strong {
   color: var(--foreground);
-  font-size: 11px;
+  font-size: 0.9375rem;
   overflow-wrap: anywhere;
 }
 
@@ -121,7 +121,7 @@
 .research-session-sources details {
   margin: 9px 0 0 27px;
   color: var(--muted-strong);
-  font-size: 10px;
+  font-size: 0.875rem;
 }
 
 .research-source-list summary,
@@ -198,7 +198,7 @@
 .research-session > section > p,
 .research-claims p {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: 1rem;
   line-height: 1.75;
 }
 
@@ -214,13 +214,13 @@
 
 .research-citations > li {
   padding: 8px 10px;
-  font-size: 10px;
+  font-size: 0.875rem;
 }
 
 .research-citations blockquote {
   margin: 0 0 6px;
   color: var(--muted-strong);
-  font-size: 10px;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 

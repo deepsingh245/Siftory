@@ -4,11 +4,11 @@
 
 Your personal library for everything worth knowing.
 
-Siftory is a local-first personal knowledge library and research workspace. The responsive shell, local library, review-before-save imports, local text extraction, ChatGPT-plan analysis, transcripts, and library-only research are implemented. An optional local media trial can produce audio and transcripts for accessible Instagram links. Manual backup/restore and external web research remain planned.
+Siftory is a local-first personal knowledge library and research workspace. It supports reviewed imports, local text extraction, ChatGPT-plan analysis, transcripts, and library research. An optional local media trial can produce audio and transcripts for accessible Instagram links.
 
 ## Development
 
-The current app supports manual entries, Inbox and All Saved, organization, keyword search, filters, recently viewed items, and imports from Instagram JSON, browser bookmark HTML, manual URLs, PDFs, and plain-text files. App imports are parsed locally and reviewed before saving. The optional media trial is a separate command. Navigation destinations marked “Planned” are not implemented features yet.
+Use Node.js 24 or newer and run the app on this machine. The app supports manual entries, Inbox and All Saved, organization, search, and imports from Instagram JSON, bookmarks, URLs, PDFs, and plain text. Imports are parsed locally and reviewed before saving.
 
 ```sh
 npm install
@@ -17,6 +17,18 @@ npm run build
 npm run lint
 npm test
 ```
+
+## Local storage and ChatGPT
+
+In the browser and address where the existing seven imports are visible, open **Settings → Local storage → Move seven imports to SQLite**. Siftory identifies the items from the local `data.json`, writes and verifies a private backup under `.siftory/backups/`, then checks the migrated data before using SQLite. Keep the original browser library and the backup for recovery. Settings shows the database size, attachments, referenced audio, and reusable pages.
+
+On Windows, connect ChatGPT once from Settings after updating. The local server encrypts the renewable OAuth session with Windows DPAPI and restores it for the same browser and address after restart. OpenAI can expire or revoke the grant. Your library works independently of ChatGPT, and analysis still requires review and consent.
+
+If analysis fails, open **Processing queue → Error details** on the job. Match its request ID to the `[Siftory AI]` entry in the terminal where Siftory is running. These diagnostics omit source text, model response bodies, and credentials.
+
+If an optional finding has a quote that cannot be matched exactly, Siftory keeps the supported analysis and marks that some findings were omitted. The summary still requires an exact source quote.
+
+Open **App links** in a saved analysis to check selected app names and store links. Name searches use Apple's public catalog. Direct Google Play links can also be checked. Other URLs stay under **Links in the text**.
 
 ## Optional local media trial
 
@@ -32,7 +44,7 @@ python -m venv .siftory/media-venv
 
 Use `--file path/to/video.mp4` for a local video or audio file, `--url https://www.instagram.com/reel/SHORTCODE/` for one link, or `--audio-only` to skip transcription. Each run writes WAV audio, SRT subtitles, and a result manifest under the Git-ignored `.siftory/media/` folder. It never changes the original export. Repeating a completed run skips existing results; a prior audio-only result is transcribed without another download. `--rerun` creates a separate result folder.
 
-While the local Siftory app is open, it checks that folder every 30 seconds and attaches generated transcripts to matching saved Instagram links that have no transcript. It leaves human-attached transcripts untouched. Removing a transcript stops automatic reattachment for that item until you enable it again. Item detail offers a local audio download. AI analysis still requires its separate review and consent. See [the trial plan](docs/phases/PHASE-6-LOCAL-MEDIA-TRIAL.md) for scope and limits.
+While the local Siftory app is open, it checks that folder every 30 seconds and attaches generated transcripts to matching saved Instagram links that have no transcript. Removing a transcript stops automatic attachment for that item until you enable it again. Item detail provides audio playback, timestamp seeking, and download. AI analysis still requires its separate review and consent. See [the trial plan](docs/phases/PHASE-6-LOCAL-MEDIA-TRIAL.md).
 
 ## Start here
 

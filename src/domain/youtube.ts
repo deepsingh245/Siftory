@@ -1,4 +1,4 @@
-import { normalizeHttpUrl } from './library'
+import { normalizeHttpUrl } from './library.ts'
 
 export type YouTubeReference = { videoId: string; contentType: 'video' | 'short' }
 

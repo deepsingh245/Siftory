@@ -1,10 +1,22 @@
 import { useState } from 'react'
-import type { AnalysisJob } from '../../domain/analysisQueue'
+import type { AnalysisDiagnostic, AnalysisJob } from '../../domain/analysisQueue'
 import { displayTitle } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
 import { AnalysisBatchReview } from './AnalysisBatchReview'
 
 function statusLabel(status: string) { return status.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) }
+
+function ErrorDetails({ diagnostic }: { diagnostic: AnalysisDiagnostic }) {
+  const fields = [
+    ['Stage', statusLabel(diagnostic.stage)], ['Reason', diagnostic.reason], ['Field', diagnostic.field],
+    ['Transcript step', diagnostic.step], ['HTTP status', diagnostic.status], ['Request ID', diagnostic.requestId],
+    ['OpenAI status', diagnostic.providerStatus], ['OpenAI request ID', diagnostic.providerRequestId],
+  ] as const
+  return <details className="analysis-error-details">
+    <summary>Error details</summary>
+    <dl>{fields.map(([label, value]) => value !== undefined && <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+  </details>
+}
 
 export function AnalysisQueuePanel({ data }: { data: LibraryData }) {
   const [reviewJobs, setReviewJobs] = useState<AnalysisJob[]>()
@@ -36,6 +48,7 @@ export function AnalysisQueuePanel({ data }: { data: LibraryData }) {
         <p className="processing-job-meta">{job.attempts} {job.attempts === 1 ? 'attempt' : 'attempts'} · Updated {new Date(job.updatedAt).toLocaleString()}</p>
         {job.kind === 'transcript' && typeof job.totalSteps === 'number' && <p className="processing-job-meta">Transcript progress: {Math.min(job.completedSteps?.length ?? 0, job.totalSteps)} of {job.totalSteps} analysis steps saved</p>}
         {job.message && <p className="processing-job-error">{job.message}</p>}
+        {job.diagnostic && <ErrorDetails diagnostic={job.diagnostic} />}
         <div className="processing-actions">
           {job.status === 'queued' && <button className="quiet-button" type="button" disabled={data.analysisRunning} onClick={() => setReviewJobs([job])}>Review this item</button>}
           {(job.status === 'needs-attention' || job.status === 'failed') && <><button className="quiet-button" type="button" onClick={() => void changeState(job, 'queued')}>Retry after review</button><button className="quiet-button" type="button" onClick={() => void changeState(job, 'skipped')}>Skip</button></>}

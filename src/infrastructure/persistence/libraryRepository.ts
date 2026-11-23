@@ -1,18 +1,18 @@
 import type { IDBPDatabase, IDBPTransaction } from 'idb'
-import { prepareAnalysisInput } from '../../domain/analysis'
-import type { Analysis, AnalysisInput } from '../../domain/analysis'
-import { analysisAttemptLeaseMs, maxAnalysisBatchSize } from '../../domain/analysisQueue'
-import type { AnalysisJob } from '../../domain/analysisQueue'
-import type { TranscriptContent } from '../../domain/transcripts'
-import { transcriptAnalysisProvenance } from '../../domain/transcriptAnalysis'
-import type { ResearchRawSourceRecord, ResearchSession, ResearchSourceKind } from '../../domain/research'
-import { markResearchSourcesUnavailable } from '../../domain/research'
-import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library'
-import { MAX_PROCESSING_SOURCE_BYTES, TEXT_EXTRACTION_VERSION } from '../../domain/processing'
-import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing'
-import { databaseName } from './libraryDatabase'
-import { openLibraryDatabase } from './libraryDatabase'
-import type { LibraryDatabase } from './libraryDatabase'
+import { prepareAnalysisInput } from '../../domain/analysis.ts'
+import type { Analysis, AnalysisInput } from '../../domain/analysis.ts'
+import { analysisAttemptLeaseMs, maxAnalysisBatchSize } from '../../domain/analysisQueue.ts'
+import type { AnalysisDiagnostic, AnalysisJob } from '../../domain/analysisQueue.ts'
+import type { TranscriptContent } from '../../domain/transcripts.ts'
+import { transcriptAnalysisProvenance } from '../../domain/transcriptAnalysis.ts'
+import type { ResearchRawSourceRecord, ResearchSession, ResearchSourceKind } from '../../domain/research.ts'
+import { markResearchSourcesUnavailable } from '../../domain/research.ts'
+import type { Category, Collection, SavedItem, SourceFileRecord, Tag } from '../../domain/library.ts'
+import { MAX_PROCESSING_SOURCE_BYTES, TEXT_EXTRACTION_VERSION } from '../../domain/processing.ts'
+import type { ExtractedContent, ProcessingJob, ProcessingStatus } from '../../domain/processing.ts'
+import { databaseName } from './libraryDatabase.ts'
+import { openLibraryDatabase } from './libraryDatabase.ts'
+import type { LibraryDatabase } from './libraryDatabase.ts'
 
 export type LibraryRepository = ReturnType<typeof createLibraryRepository>
 
@@ -35,14 +35,14 @@ async function markSessionsForSourceChange(
   await Promise.all(sessions.map((session) => store.put(markResearchSourcesUnavailable(session, savedItemId, kind, status, at))))
 }
 
-export function createLibraryRepository(name = databaseName, onBlocked?: () => void) {
+export function createLibraryRepository(name = databaseName, onBlocked?: () => void, open = openLibraryDatabase) {
   let connectionPromise: Promise<IDBPDatabase<LibraryDatabase>> | undefined
 
   function connection(): Promise<IDBPDatabase<LibraryDatabase>> {
     if (connectionPromise) return connectionPromise
 
     let opening!: Promise<IDBPDatabase<LibraryDatabase>>
-    opening = openLibraryDatabase(name, onBlocked).then((db) => {
+    opening = open(name, onBlocked).then((db) => {
       db.addEventListener('versionchange', () => {
         db.close()
         if (connectionPromise === opening) connectionPromise = undefined
@@ -80,7 +80,7 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
   }
 
   function finishAttempt(job: AnalysisJob, status: AnalysisJob['status'], message?: string, now = Date.now()): AnalysisJob {
-    return { ...job, status, message, attemptId: undefined, leaseUntil: undefined, updatedAt: new Date(now).toISOString() }
+    return { ...job, status, message, diagnostic: undefined, attemptId: undefined, leaseUntil: undefined, updatedAt: new Date(now).toISOString() }
   }
 
   return {
@@ -251,7 +251,10 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
         const oldTranscript = oldId ? await tx.objectStore('transcripts').get(oldId) : undefined
         if (oldId && oldId !== transcript.id) await tx.objectStore('transcripts').delete(oldId)
         await tx.objectStore('transcripts').put(transcript)
-        await items.put({ ...item, transcriptId: transcript.id, updatedAt: new Date().toISOString() })
+        await items.put({
+          ...item, transcriptId: transcript.id, transcriptReviewedAt: transcript.reviewedAt,
+          transcriptConfirmedAt: transcript.confirmedAt, updatedAt: new Date().toISOString(),
+        })
         if (oldId && (!oldTranscript || oldTranscript.fingerprint !== transcript.fingerprint)) {
           await markSessionsForSourceChange(tx.objectStore('researchSessions'), item.id, 'transcript', 'changed')
           const analyses = await tx.objectStore('analyses').index('by-item').getAll(item.id)
@@ -290,7 +293,10 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
         await tx.objectStore('transcripts').delete(item.transcriptId)
         await markSessionsForSourceChange(tx.objectStore('researchSessions'), itemId, 'transcript', 'deleted')
       }
-      if (item) await tx.objectStore('savedItems').put({ ...item, transcriptId: undefined, autoTranscriptDismissed: true, updatedAt: new Date().toISOString() })
+      if (item) await tx.objectStore('savedItems').put({
+        ...item, transcriptId: undefined, transcriptReviewedAt: undefined, transcriptConfirmedAt: undefined,
+        autoTranscriptDismissed: true, updatedAt: new Date().toISOString(),
+      })
       const analyses = await tx.objectStore('analyses').index('by-item').getAll(itemId)
       const jobs = await tx.objectStore('analysisJobs').index('by-item').getAll(itemId)
       await Promise.all([
@@ -308,15 +314,16 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       await tx.done
     },
 
-    async saveAnalysisStep(id: string, attemptId: string, stepId: string, result: Analysis['result']) {
+    async saveAnalysisStep(id: string, attemptId: string, stepId: string, result: Analysis['result'], hasOmittedFindings?: boolean) {
       return writeAnalysis(async (tx) => {
         const store = tx.objectStore('analysisJobs')
         const job = await store.get(id)
         if (job?.status !== 'analyzing' || job.attemptId !== attemptId || (job.leaseUntil ?? 0) <= Date.now()) return false
         const completedSteps = job.completedSteps ?? []
+        const step = { id: stepId, result, ...(hasOmittedFindings ? { hasOmittedFindings: true } : {}) }
         const next = completedSteps.some((entry) => entry.id === stepId)
-          ? completedSteps.map((entry) => entry.id === stepId ? { id: stepId, result } : entry)
-          : [...completedSteps, { id: stepId, result }]
+          ? completedSteps.map((entry) => entry.id === stepId ? step : entry)
+          : [...completedSteps, step]
         await store.put({ ...job, completedSteps: next, leaseUntil: Date.now() + analysisAttemptLeaseMs, updatedAt: new Date().toISOString() })
         return true
       })
@@ -372,11 +379,13 @@ export function createLibraryRepository(name = databaseName, onBlocked?: () => v
       })
     },
 
-    async failAnalysisJob(id: string, attemptId: string, status: 'failed' | 'needs-attention', message: string) {
+    async failAnalysisJob(id: string, attemptId: string, status: 'failed' | 'needs-attention', message: string, diagnostic?: AnalysisDiagnostic) {
       return writeAnalysis(async (tx) => {
         const store = tx.objectStore('analysisJobs')
         const job = await store.get(id)
-        if (job?.status === 'analyzing' && job.attemptId === attemptId) await store.put(finishAttempt(job, status, message))
+        if (job?.status === 'analyzing' && job.attemptId === attemptId) {
+          await store.put({ ...finishAttempt(job, status, message), diagnostic: diagnostic ?? undefined })
+        }
       })
     },
 

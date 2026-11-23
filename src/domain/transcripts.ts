@@ -32,6 +32,8 @@ export type TranscriptContent = ParsedTranscript & {
   pastedText?: string
   asrModel?: string
   audioSourceKey?: string
+  reviewedAt?: string
+  confirmedAt?: string
 }
 
 export function parseTranscript(text: string, format: TranscriptFormat): ParsedTranscript {

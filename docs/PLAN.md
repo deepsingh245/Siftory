@@ -134,6 +134,8 @@ Deliver a calm, responsive, local-first research library where a person can impo
 **Work:** Review backup/restore round trips, migrations, storage quotas, interrupted operations, accessibility, responsive behavior, performance, privacy, security, error recovery, and user-facing help. Run the checks supported by the actual project setup.
 
 **Gate:** Core flows and data portability meet their acceptance criteria; no secrets are exposed; known limits are documented; release evidence reflects checks actually performed.
+
+**Focused plan:** [Local persistence and workspace redesign](phases/PHASE-8-LOCAL-PERSISTENCE-AND-WORKSPACE.md) records the SQLite cutover, Windows credential protection, and design changes. The populated browser profile and a live ChatGPT grant are required to verify the personal data and account end to end.
 ## How phase plans will be written
 
 Before coding a phase, create a focused plan under `docs/phases/` using the phase number and name. Each detailed plan should include:

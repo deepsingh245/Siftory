@@ -1,6 +1,6 @@
-import { createSavedItem, normalizeHttpUrl } from './library'
-import type { ContentType, ItemDraft, SavedItem, SourceFileRecord, SourceType } from './library'
-import { identifyYouTubeUrl } from './youtube'
+import { createSavedItem, normalizeHttpUrl } from './library.ts'
+import type { ContentType, ItemDraft, SavedItem, SourceFileRecord, SourceType } from './library.ts'
+import { identifyYouTubeUrl } from './youtube.ts'
 
 export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024
 export const MAX_IMPORT_DOCUMENT_BYTES = 10 * 1024 * 1024

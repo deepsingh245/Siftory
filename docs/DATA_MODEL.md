@@ -1,6 +1,6 @@
 ﻿# Siftory Data Model
 
-This document describes the conceptual model and current implementation. The library, imports, jobs, extracted text, transcript artifacts, individual analyses, research sessions, and analysis queue are implemented in `src/domain/` and IndexedDB schema version 7.
+The records below are defined in `src/domain/`. IndexedDB schema 7 remains the source for the legacy browser library. After Phase 8 cutover, the same records use the local SQLite repository, with original attachment bytes on disk and WAV files referenced by key.
 
 ## SavedItem
 
@@ -30,6 +30,7 @@ Suggested fields:
 - `sourceFingerprint`: SHA-256 fingerprint for imported file bytes when applicable.
 - `sourceFileId`: optional link to a locally stored original PDF or text file.
 - `transcriptId`: optional link to a separately stored user-provided or locally generated transcript artifact.
+- `transcriptReviewedAt` and `transcriptConfirmedAt`: optional markers copied from the attached artifact for display in the item list.
 - `autoTranscriptDismissed`: optional per-item flag that prevents the local media trial from reattaching a transcript after the user removes one.
 
 ## SourceFile

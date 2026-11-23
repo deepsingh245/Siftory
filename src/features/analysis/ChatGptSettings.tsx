@@ -56,12 +56,13 @@ export function ChatGptSettings() {
       </div>
       <section className="processing-panel" aria-labelledby="chatgpt-heading">
         <h2 id="chatgpt-heading">ChatGPT connection</h2>
-        <p className="processing-boundary-note">Use your ChatGPT plan to analyze selected captions or extracted text. Siftory asks before sending the text to OpenAI. Your connection lasts until it expires or the local server stops.</p>
+        <p className="processing-boundary-note">Use your ChatGPT plan to analyze selected text. Siftory asks before sending text to OpenAI. On Windows, a renewable connection can reopen in this browser after a restart.</p>
         <p role="status" className="processing-capability-reason">
           {status?.state === 'connected' ? `Connected${status.email ? ` as ${status.email}` : ''}. ${status.models.length} models available.`
             : pending ? 'Waiting for ChatGPT sign-in. Return here when it finishes.'
               : status?.message ?? (status ? 'Disconnected' : error ? '' : 'Checking connection…')}
         </p>
+        {status?.state === 'connected' && status.message && <p role="status">{status.message}</p>}
         {error && <p className="library-error" role="alert">{error}</p>}
         <div className="processing-actions">
           {pending && authorizationUrl && <a href={authorizationUrl} className="primary-button" target="_blank" rel="noreferrer" data-oai-siwc-button>Continue with ChatGPT (opens in a new tab)</a>}

@@ -1,0 +1,356 @@
+.skip-link {
+  position: fixed;
+  z-index: 20;
+  top: 1rem;
+  left: 1rem;
+  padding: .625rem 1rem;
+  translate: 0 -180%;
+  color: var(--foreground);
+  background: var(--surface-raised);
+  border: 1px solid var(--focus-ring);
+}
+
+.skip-link:focus {
+  translate: 0;
+}
+
+.workspace-topline {
+  margin-bottom: clamp(1.5rem, 3vw, 3rem);
+}
+
+.global-search {
+  min-height: 44px;
+}
+
+.sidebar {
+  overflow-y: auto;
+}
+
+.library-page-heading h1,
+.item-detail-heading h1 {
+  font-family: Georgia, Cambria, serif;
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.library-page-description {
+  max-width: 58ch;
+}
+
+.primary-button,
+.quiet-button,
+.sort-field select,
+.view-toggle button {
+  min-height: 42px;
+}
+
+.library-toolbar {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.library-filter-disclosure {
+  margin-block: .5rem 1rem;
+}
+
+.library-filter-disclosure > summary,
+.transcript-edit > summary,
+.source-details > summary {
+  cursor: pointer;
+  color: var(--foreground);
+  padding-block: .55rem;
+  font-weight: 600;
+}
+
+.inbox-list {
+  display: block;
+  border-top: 1px solid var(--border);
+  margin-top: .25rem;
+}
+
+.inbox-list > li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+}
+
+.inbox-list > li[data-selected] {
+  background: var(--primary-soft);
+}
+
+.inbox-list > li:focus-within,
+.inbox-list > li:hover {
+  background: var(--surface);
+}
+
+.inbox-list > li[data-selected]:focus-within {
+  background: var(--primary-soft);
+}
+
+.inbox-list .analysis-item-select {
+  margin: 0;
+  padding: 1.25rem .5rem;
+}
+
+.inbox-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, auto) auto;
+  align-items: start;
+  gap: .65rem 1.25rem;
+  padding: 1rem .65rem;
+}
+
+.inbox-row h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -.014em;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.inbox-row h2 a {
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.inbox-row h2 a:hover {
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
+.inbox-row p,
+.inbox-row-status {
+  margin: .25rem 0 0;
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+.inbox-row-status {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.inbox-ai-status {
+  color: var(--primary-strong);
+  font-weight: 600;
+}
+
+.inbox-actions summary {
+  cursor: pointer;
+  padding: .35rem;
+  color: var(--muted-strong);
+}
+
+.inbox-actions > div {
+  display: flex;
+  flex-flow: column;
+  align-items: flex-start;
+  gap: .4rem;
+  margin: .5rem 0 0;
+}
+
+.inbox-actions a,
+.transcript-audio button,
+.analysis-batch a {
+  color: var(--primary-strong);
+}
+
+.detail-panel,
+.detail-main > .processing-panel,
+.storage-settings {
+  min-width: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: clamp(.9rem, 2.3vw, 1.5rem) 0;
+}
+
+.detail-main,
+.detail-layout > * {
+  min-width: 0;
+}
+
+.detail-panel p,
+.detail-list dd,
+.transcript-provenance,
+.analysis-connection {
+  overflow-wrap: anywhere;
+}
+
+.reading-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+  margin-bottom: .5rem;
+}
+
+.reading-section-heading h2 {
+  margin: 0;
+  font-family: Georgia, Cambria, serif;
+  font-size: clamp(1.5rem, 2.9vw, 2rem);
+  font-weight: 500;
+}
+
+.reading-status {
+  color: var(--muted-strong);
+  font-size: .875rem;
+}
+
+.reading-status--ready,
+.analysis-connection {
+  color: var(--primary-strong);
+}
+
+.transcript-provenance,
+.transcript-review-note {
+  margin: .5rem 0;
+  color: var(--muted);
+  font-size: .9375rem;
+}
+
+.transcript-audio {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  margin-block: 1rem;
+}
+
+.transcript-audio audio {
+  max-width: 100%;
+  height: 42px;
+}
+
+.transcript-reading {
+  margin-block: 1.15rem;
+  padding: clamp(.7rem, 2vw, 1.4rem);
+  background: var(--surface);
+  border-radius: .8rem;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.transcript-panel .transcript-segments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transcript-panel .transcript-segments li {
+  display: grid;
+  grid-template-columns: 3.3rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: .65rem;
+  padding: .5rem 0;
+  border: 0;
+}
+
+.transcript-panel .transcript-segments p,
+.transcript-plain {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.timestamp-button,
+.transcript-segments time {
+  color: var(--primary-strong);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timestamp-button {
+  min-height: 32px;
+  padding: .15rem .2rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
+.transcript-edit {
+  margin-top: .75rem;
+}
+
+.transcript-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+.analysis-batch--inline {
+  margin-block: 1rem 0;
+  padding-top: .8rem;
+  border-top: 1px solid var(--border);
+}
+
+.analysis-batch--inline .form-field {
+  max-width: 24rem;
+  margin-block: 1rem;
+}
+
+.analysis-batch--inline .analysis-source {
+  font-family: inherit;
+  line-height: 1.55;
+}
+
+.storage-breakdown {
+  display: grid;
+  gap: .5rem;
+  max-width: 42ch;
+}
+
+.storage-breakdown div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .3rem 1rem;
+}
+
+.storage-breakdown dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 680px) {
+  .workspace .workspace-topline {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inbox-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: .25rem;
+  }
+
+  .inbox-row-main {
+    grid-column: 1 / -1;
+  }
+
+  .inbox-row-status {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .25rem .65rem;
+  }
+
+  .inbox-actions[open] {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-nav .nav-link {
+    min-height: 44px;
+  }
+}

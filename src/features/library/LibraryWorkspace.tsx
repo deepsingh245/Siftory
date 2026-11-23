@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import {
   contentTypes,
   createSavedItem,
@@ -29,12 +29,15 @@ import { AnalysisPanel } from '../analysis/AnalysisPanel'
 import { AnalysisBatchReview } from '../analysis/AnalysisBatchReview'
 import { maxAnalysisBatchSize } from '../../domain/analysisQueue'
 import { ChatGptSettings } from '../analysis/ChatGptSettings'
+import { StorageSettings } from './StorageSettings'
 import { ProcessingQueuePage } from '../processing/ProcessingQueuePage'
 import { ProcessingCardAction, ProcessingPanel } from '../processing/ProcessingPanel'
 import { TranscriptPanel } from './TranscriptPanel'
+import type { TranscriptCue } from './TranscriptPanel'
 import { identifyYouTubeUrl } from '../../domain/youtube'
 import { ResearchWorkspace } from '../research/ResearchWorkspace'
 import './library.css'
+import './item-detail.css'
 
 type Props = {
   route: AppRoute
@@ -45,7 +48,7 @@ type Props = {
 export function LibraryWorkspace({ route, data, query }: Props) {
   const [filters, setFilters] = useState<Omit<ItemFilters, 'query' | 'status'>>({ sort: 'recent' })
 
-  if (route.page === 'settings') return <ChatGptSettings />
+  if (route.page === 'settings') return <><ChatGptSettings /><StorageSettings refresh={data.refresh} /></>
   if (route.page === 'research') return <ResearchWorkspace sessionId={route.id} data={data} />
 
   if (data.loading) {
@@ -164,6 +167,19 @@ function LibraryListing({
   const [selectingAnalysis, setSelectingAnalysis] = useState(false)
   const [analysisSelection, setAnalysisSelection] = useState<string[]>([])
   const [showAnalysisReview, setShowAnalysisReview] = useState(false)
+  const [reviewFilter, setReviewFilter] = useState('all')
+  const inbox = route.page === 'inbox'
+  const latestAnalysis = new Map<string, LibraryData['analysisJobs'][number]>()
+  for (const job of data.analysisJobs) {
+    const current = latestAnalysis.get(job.savedItemId)
+    if (!current || current.updatedAt < job.updatedAt) latestAnalysis.set(job.savedItemId, job)
+  }
+  const visibleItems = !inbox || reviewFilter === 'all' ? items : items.filter((item) => {
+    const job = latestAnalysis.get(item.id)
+    if (reviewFilter === 'transcript') return Boolean(item.transcriptId)
+    if (reviewFilter === 'analyzed') return job?.status === 'completed'
+    return ((!item.transcriptId && ['instagram', 'youtube'].includes(item.sourceType)) || job?.status === 'failed' || job?.status === 'needs-attention')
+  })
 
   async function handleCreate(draft: ItemDraft) {
     const item = createSavedItem(draft)
@@ -202,13 +218,10 @@ function LibraryListing({
     }
   }
 
-  const headingLabel = route.page === 'inbox' ? 'INBOX' : route.page === 'recent' ? 'HISTORY' : 'YOUR LIBRARY'
-
   return (
     <section className="library-page" aria-labelledby="library-heading">
       <div className="library-page-heading">
         <div>
-          <p className="library-eyebrow">{headingLabel}</p>
           <h1 id="library-heading">{title}</h1>
           <p className="library-page-description">{description}</p>
         </div>
@@ -231,6 +244,15 @@ function LibraryListing({
       {showAnalysisReview && analysisSelection.length > 0 && <AnalysisBatchReview itemIds={analysisSelection} data={data} onClose={() => setShowAnalysisReview(false)} />}
 
       <div className="library-toolbar">
+        {inbox && <label className="sort-field">
+          <span className="visually-hidden">Filter by review status</span>
+          <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}>
+            <option value="all">All review stages</option>
+            <option value="attention">Needs attention</option>
+            <option value="transcript">Has transcript</option>
+            <option value="analyzed">Analyzed</option>
+          </select>
+        </label>}
         <label className="sort-field">
           <span className="visually-hidden">Sort items</span>
           <select value={filters.sort ?? 'recent'} onChange={(event) => onFiltersChange({ ...filters, sort: event.target.value as ItemFilters['sort'] })}>
@@ -246,19 +268,21 @@ function LibraryListing({
         </div>
       </div>
 
-      <FilterPanel data={data} filters={filters} onChange={onFiltersChange} />
+      <details className="library-filter-disclosure"><summary>Source and labels</summary>
+        <FilterPanel data={data} filters={filters} onChange={onFiltersChange} />
+      </details>
 
       <div className="result-summary" aria-live="polite">
-        <span>{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+        <span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'}</span>
         {query && <span>matching “{query}”</span>}
       </div>
 
-      {items.length ? (
-        <ul className={`saved-items saved-items--${view}`}>
-          {items.map((item) => (
-            <li key={item.id}>
-              {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span>Select for AI analysis</span></label> : null}
-              <SavedItemCard
+      {visibleItems.length ? (
+        <ul className={`saved-items saved-items--${view}${inbox && view === 'list' ? ' inbox-list' : ''}`}>
+          {visibleItems.map((item) => (
+            <li key={item.id} data-selected={analysisSelection.includes(item.id) || undefined}>
+              {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span className="visually-hidden">Select {displayTitle(item)} for AI analysis</span></label> : null}
+              {inbox && view === 'list' ? <InboxRow item={item} data={data} job={latestAnalysis.get(item.id)} onSave={() => setItemStatus(item, 'saved')} onDelete={() => deleteItem(item)} /> : <SavedItemCard
                 item={item}
                 data={data}
                 collections={data.collections}
@@ -266,15 +290,15 @@ function LibraryListing({
                 tags={data.tags}
                 onSaveToLibrary={item.status === 'inbox' ? () => setItemStatus(item, 'saved') : undefined}
                 onDelete={() => deleteItem(item)}
-              />
+              />}
             </li>
           ))}
         </ul>
       ) : (
         <div className="library-empty-state">
           <span className="empty-state-mark" aria-hidden="true">{route.page === 'inbox' ? '○' : '✳'}</span>
-          <h2>{query ? 'No matches found.' : emptyHeading(route, canAdd)}</h2>
-          <p>{query ? 'Try another phrase or adjust the filters.' : emptyDescription(route, canAdd)}</p>
+          <h2>{query || (inbox && reviewFilter !== 'all') ? 'No matching items' : emptyHeading(route, canAdd)}</h2>
+          <p>{query || (inbox && reviewFilter !== 'all') ? 'Try another phrase or change the filters.' : emptyDescription(route, canAdd)}</p>
           {canAdd && !showForm && (
             <button className="quiet-button" type="button" onClick={() => setShowForm(true)}>Add your first item</button>
           )}
@@ -282,6 +306,41 @@ function LibraryListing({
       )}
     </section>
   )
+}
+
+function InboxRow({ item, data, job, onSave, onDelete }: {
+  item: SavedItem
+  data: LibraryData
+  job?: LibraryData['analysisJobs'][number]
+  onSave: () => void
+  onDelete: () => void
+}) {
+  const date = item.savedAt ?? item.createdAt
+  const transcript = item.transcriptId
+    ? item.transcriptConfirmedAt ? 'Transcript confirmed' : item.transcriptReviewedAt ? 'Transcript reviewed' : 'Transcript to review'
+    : ['youtube', 'instagram'].includes(item.sourceType) ? 'No transcript' : undefined
+  const analysis = job?.status === 'completed' ? 'Analyzed' : job?.status === 'analyzing' ? 'Analyzing' : job?.status === 'queued' ? 'Queued for AI'
+    : job?.status === 'failed' || job?.status === 'needs-attention' ? 'Analysis needs attention' : undefined
+  return <article className="inbox-row">
+    <div className="inbox-row-main">
+      <h2><a href={routeHref({ page: 'item', id: item.id })}>{displayTitle(item)}</a></h2>
+      <p>{humanize(item.sourceType)}{item.creatorName && ` · ${item.creatorName}`}</p>
+    </div>
+    <div className="inbox-row-status">
+      {transcript && <span>{transcript}</span>}
+      {analysis && <span className="inbox-ai-status">{analysis}</span>}
+      <time dateTime={date}>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
+    </div>
+    <details className="inbox-actions">
+      <summary aria-label={`Actions for ${displayTitle(item)}`}>Actions</summary>
+      <div>
+        {item.url && safeExternalUrl(item.url) && <a href={safeExternalUrl(item.url)} target="_blank" rel="noreferrer">Open source</a>}
+        <ProcessingCardAction item={item} data={data} />
+        <button className="quiet-button" type="button" onClick={onSave}>Move to All Saved</button>
+        <button className="quiet-button danger-button" type="button" onClick={onDelete}>Remove</button>
+      </div>
+    </details>
+  </article>
 }
 
 function emptyHeading(route: AppRoute, canAdd: boolean) {
@@ -438,15 +497,30 @@ function SavedItemCard({ item, data, collections, categories, tags, onSaveToLibr
   )
 }
 
+const itemTabs = [
+  { id: 'overview', title: 'Overview' },
+  { id: 'transcript', title: 'Transcript' },
+  { id: 'details', title: 'Item details' },
+] as const
+type ItemTab = (typeof itemTabs)[number]['id']
+
 function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string>()
+  const [tab, setTab] = useState<ItemTab>('overview')
+  const [cue, setCue] = useState<TranscriptCue>()
+  const tabList = useRef<HTMLDivElement>(null)
   const [sourceFile, setSourceFile] = useState<SourceFileRecord>()
   const [sourceFileLookupId, setSourceFileLookupId] = useState<string>()
   const markViewed = data.actions.markViewed
   const getSourceFile = data.getSourceFile
   const storedVideoId = item.sourceMetadata?.youtubeVideoId
   const youtubeVideoId = typeof storedVideoId === 'string' ? storedVideoId : item.url ? identifyYouTubeUrl(item.url)?.videoId : undefined
+  const hasTranscriptView = item.sourceType === 'youtube' || item.sourceType === 'instagram'
+  const activeTab = tab === 'transcript' && !hasTranscriptView ? 'overview' : tab
+  const tabs = hasTranscriptView ? itemTabs : itemTabs.filter(({ id }) => id !== 'transcript')
+  const originalUrl = item.url ? safeExternalUrl(item.url) : undefined
+  const creator = item.creatorName || (item.creatorHandle ? `@${item.creatorHandle}` : undefined)
 
   useEffect(() => {
     void markViewed(item.id).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not update recent history.'))
@@ -513,22 +587,71 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
 
   async function remove() {
     if (!window.confirm(`Remove “${displayTitle(item)}” from this library? The original source will not be changed.`)) return
-    await data.actions.deleteItem(item.id)
-    window.location.hash = '#/library'
+    try {
+      await data.actions.deleteItem(item.id)
+      window.location.hash = '#/library'
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The saved item could not be removed.')
+    }
+  }
+
+  function selectTab(id: ItemTab) {
+    setCue(undefined)
+    setTab(id)
+  }
+
+  function navigateTabs(event: KeyboardEvent<HTMLDivElement>) {
+    const current = tabs.findIndex(({ id }) => id === activeTab)
+    const last = tabs.length - 1
+    let next: number
+    if (event.key === 'ArrowRight') next = current === last ? 0 : current + 1
+    else if (event.key === 'ArrowLeft') next = current === 0 ? last : current - 1
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = last
+    else return
+    event.preventDefault()
+    selectTab(tabs[next].id)
+    tabList.current?.querySelector<HTMLButtonElement>(`#item-tab-${tabs[next].id}`)?.focus()
+  }
+
+  function openCue(next: TranscriptCue) {
+    setCue(next)
+    setTab('transcript')
   }
 
   return (
     <section className="item-detail" aria-labelledby="item-heading">
       <a className="back-link" href={item.status === 'inbox' ? '#/inbox' : '#/library'}>← Back to {item.status === 'inbox' ? 'Inbox' : 'All Saved'}</a>
-      <div className="item-detail-heading">
-        <div><p className="library-eyebrow">{humanize(item.status)} · {humanize(item.sourceType)}</p><h1 id="item-heading">{displayTitle(item)}</h1></div>
-        <div className="detail-header-actions"><button className="quiet-button" type="button" onClick={() => setEditing((value) => !value)}>{editing ? 'Stop editing' : 'Edit item'}</button><button className="quiet-button danger-button" type="button" onClick={remove}>Remove</button></div>
-      </div>
+      <header className="item-detail-heading">
+        <div>
+          <p className="item-source-kicker"><span>{humanize(item.sourceType)}</span><span>{humanize(item.status)}</span></p>
+          <h1 id="item-heading">{displayTitle(item)}</h1>
+          {creator && <p className="item-source-creator">{creator}</p>}
+        </div>
+        <div className="detail-header-actions">
+          {originalUrl && <a className="quiet-button item-open-source" href={originalUrl} target="_blank" rel="noreferrer">Open source <span aria-hidden="true">↗</span></a>}
+          <button className="quiet-button" type="button" aria-expanded={editing} onClick={() => setEditing((value) => !value)}>{editing ? 'Stop editing' : 'Edit item'}</button>
+        </div>
+      </header>
       {error && <p className="library-error" role="alert">{error}</p>}
-      {editing ? <ManualItemForm initialItem={item} onCancel={() => setEditing(false)} onSave={save} /> : (
-        <div className="detail-layout">
+      {editing && <ManualItemForm initialItem={item} onCancel={() => setEditing(false)} onSave={save} />}
+      <div hidden={editing}>
+        <div className="item-view-tabs" ref={tabList} role="tablist" aria-label="Saved item views" onKeyDown={navigateTabs}>
+          {tabs.map(({ id, title }) => <button
+            key={id} type="button" role="tab" id={`item-tab-${id}`} aria-controls={`item-view-${id}`}
+            aria-selected={activeTab === id} tabIndex={activeTab === id ? 0 : -1} onClick={() => selectTab(id)}
+          >{title}</button>)}
+        </div>
+        <div className="item-view-panel" hidden={activeTab !== 'overview'} id="item-view-overview" role="tabpanel" aria-labelledby="item-tab-overview" tabIndex={0}>
+          {item.sourceType === 'text' && <ProcessingPanel item={item} data={data} />}
+          <AnalysisPanel item={item} data={data} onTranscriptCue={hasTranscriptView && item.transcriptId ? openCue : undefined} />
+        </div>
+        {hasTranscriptView && <div className="item-view-panel item-view-transcript" hidden={activeTab !== 'transcript'} id="item-view-transcript" role="tabpanel" aria-labelledby="item-tab-transcript" tabIndex={0}>
+          <TranscriptPanel item={item} data={data} active={activeTab === 'transcript' && !editing} cue={activeTab === 'transcript' && !editing ? cue : undefined} />
+        </div>}
+        <div className="item-view-panel item-metadata-layout" hidden={activeTab !== 'details'} id="item-view-details" role="tabpanel" aria-labelledby="item-tab-details" tabIndex={0}>
           <div className="detail-main">
-            <section className="detail-panel"><h2>Source details</h2>
+            <section className="detail-panel source-details"><h2>Source details</h2>
               <dl className="detail-list">
                 <DetailRow label="Original link">{item.url && safeExternalUrl(item.url) ? <a href={safeExternalUrl(item.url)} target="_blank" rel="noreferrer">{item.url}</a> : <span>{item.url ? 'Unavailable: invalid web address' : 'Not added'}</span>}</DetailRow>
                 <DetailRow label="Content type">{humanize(item.contentType)}</DetailRow>
@@ -540,20 +663,18 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
                 {item.sourceFileId && <DetailRow label="Original file">{sourceFileLookupId !== item.sourceFileId ? 'Loading local file…' : sourceFile?.savedItemId === item.sourceFileId ? <button className="text-link-button" type="button" onClick={downloadSourceFile}>Download {sourceFile.fileName} ({Math.ceil(sourceFile.size / 1024)} KB)</button> : 'The original local file is unavailable.'}</DetailRow>}
               </dl>
             </section>
-            <section className="detail-panel"><h2>Description or caption</h2><p>{item.description || 'No description has been added.'}</p></section>
+            {!hasTranscriptView && item.sourceType !== 'text' && <ProcessingPanel item={item} data={data} />}
+            {item.description && <section className="detail-panel"><h2>Description or caption</h2><p>{item.description}</p></section>}
             <section className="detail-panel"><h2>Your notes</h2><p className="detail-notes">{item.userNotes || 'No notes yet.'}</p></section>
-            <ProcessingPanel item={item} data={data} />
-            <TranscriptPanel item={item} data={data} />
-            <AnalysisPanel item={item} data={data} />
+            <button className="quiet-button danger-button item-remove" type="button" onClick={() => void remove()}>Remove from library</button>
           </div>
           <aside className="detail-aside" aria-label="Organize item">
             <RelationPicker title="Collections" items={data.collections} selected={item.collectionIds} onToggle={(id, checked) => toggleRelation('collectionIds', id, checked)} />
             <RelationPicker title="Categories" items={data.categories} selected={item.categoryIds} onToggle={(id, checked) => toggleRelation('categoryIds', id, checked)} />
             <RelationPicker title="Tags" items={data.tags} selected={item.tagIds} onToggle={(id, checked) => toggleRelation('tagIds', id, checked)} />
-            <p className="local-data-note">Stored in this browser only. This device's browser data may be cleared or evicted.</p>
           </aside>
         </div>
-      )}
+      </div>
     </section>
   )
 }

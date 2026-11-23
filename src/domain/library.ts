@@ -57,6 +57,8 @@ export type SavedItem = {
   sourceFingerprint?: string
   sourceFileId?: string
   transcriptId?: string
+  transcriptReviewedAt?: string
+  transcriptConfirmedAt?: string
   autoTranscriptDismissed?: boolean
 }
 

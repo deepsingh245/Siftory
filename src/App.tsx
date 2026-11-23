@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { parseRoute, routeHref } from './app/routes'
 import type { AppRoute } from './app/routes'
 import { LibraryWorkspace } from './features/library/LibraryWorkspace'
 import { useLibraryData } from './features/library/useLibraryData'
 import './App.css'
+import './features/library/workspace.css'
 
 type IconName =
   | 'all'
@@ -72,7 +73,7 @@ type NavigationItem = {
 const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   { label: 'Library', items: [{ label: 'All saved', icon: 'all', href: '#/library', page: 'library' }, { label: 'Inbox', icon: 'inbox', href: '#/inbox', page: 'inbox' }, { label: 'Import', icon: 'arrow', href: '#/import', page: 'import' }] },
   { label: 'Organize', items: [{ label: 'Collections', icon: 'collection', href: '#/collections', page: 'collections' }, { label: 'Categories', icon: 'category', href: '#/categories', page: 'categories' }, { label: 'Tags', icon: 'tag', href: '#/tags', page: 'tags' }] },
-  { label: 'Discover', items: [{ label: 'Recently viewed', icon: 'recent', href: '#/recent', page: 'recent' }, { label: 'Research', icon: 'research', href: '#/research', page: 'research' }, { label: 'Processing queue', icon: 'queue', href: '#/queue', page: 'queue' }, { label: 'Insights', icon: 'insights' }] },
+  { label: 'Discover', items: [{ label: 'Recently viewed', icon: 'recent', href: '#/recent', page: 'recent' }, { label: 'Research', icon: 'research', href: '#/research', page: 'research' }, { label: 'Processing queue', icon: 'queue', href: '#/queue', page: 'queue' }] },
   { label: 'Workspace', items: [{ label: 'Settings', icon: 'settings', href: '#/settings', page: 'settings' }] },
 ]
 
@@ -138,21 +139,37 @@ function routeTitle(route: AppRoute) {
 }
 
 function App() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try { return localStorage.getItem('siftory-appearance') === 'light' ? 'light' : 'dark' }
+    catch { return 'dark' }
+  })
   const [query, setQuery] = useState('')
   const isDark = theme === 'dark'
   const route = useAppRoute()
   const library = useLibraryData()
+  const previousRoute = useRef(route)
+  const main = useRef<HTMLElement>(null)
 
   useEffect(() => {
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
-      isDark ? '#171B1A' : '#E8E9DF',
+      isDark ? '#151A19' : '#F4F1E8',
     )
-  }, [isDark])
+    try { localStorage.setItem('siftory-appearance', theme) } catch { /* Theme still applies until reload. */ }
+  }, [isDark, theme])
+
+  useEffect(() => {
+    document.title = `${routeTitle(route)} · Siftory`
+    if (previousRoute.current !== route && document.activeElement?.tagName !== 'INPUT') {
+      main.current?.focus({ preventScroll: true })
+      window.scrollTo(0, 0)
+    }
+    previousRoute.current = route
+  }, [route])
 
   return (
     <div className="app-shell" data-theme={theme}>
+      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); main.current?.focus() }}>Skip to content</a>
       <aside className="sidebar" aria-label="Siftory workspace">
         <a className="brand" href="#/library" aria-label="Siftory home">
           <span className="brand-mark"><Icon name="mark" size={21} /></span>
@@ -163,10 +180,6 @@ function App() {
         <NavigationGroups route={route} />
 
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="sidebar-note-mark"><Icon name="spark" size={16} /></span>
-            <span><strong>A little more clarity.</strong><small>Your personal research desk.</small></span>
-          </div>
           <button
             className="theme-button sidebar-theme-button"
             type="button"
@@ -176,7 +189,6 @@ function App() {
             <Icon name={isDark ? 'sun' : 'moon'} size={17} />
             <span>{isDark ? 'Light appearance' : 'Dark appearance'}</span>
           </button>
-          <span className="sidebar-version">SIFTORY · FOUNDATION</span>
         </div>
       </aside>
 
@@ -198,7 +210,7 @@ function App() {
 
         <NavigationGroups route={route} mobile />
 
-        <main className="workspace" id="main">
+        <main className="workspace" id="main" ref={main} tabIndex={-1}>
           <div className="workspace-topline">
             <p className="breadcrumb"><span>Workspace</span><span className="breadcrumb-divider">/</span><strong>{routeTitle(route)}</strong></p>
             <label className="search-placeholder global-search">
@@ -207,7 +219,7 @@ function App() {
               <input aria-label="Search your library" type="search" value={query} onChange={(event) => {
                 const value = event.target.value
                 setQuery(value)
-                if (value.trim() && route.page !== 'library') window.location.hash = routeHref({ page: 'library' })
+                if (value.trim() && route.page !== 'library' && route.page !== 'inbox') window.location.hash = routeHref({ page: 'library' })
               }} placeholder="Search your library" />
             </label>
           </div>
@@ -216,10 +228,6 @@ function App() {
 
           <LibraryWorkspace route={route} data={library} query={query} />
 
-          <footer className="workspace-footer">
-            <span>Made for the things you want to understand.</span>
-            <span className="footer-status"><span className="status-dot" /> LOCAL LIBRARY</span>
-          </footer>
         </main>
       </div>
     </div>

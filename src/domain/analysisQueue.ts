@@ -1,12 +1,23 @@
-import { analysisId, analysisVersion } from './analysis'
-import type { AnalysisInput } from './analysis'
-import type { AnalysisResult } from './analysis'
-import type { TranscriptSegment } from './transcripts'
+import { analysisId, analysisVersion } from './analysis.ts'
+import type { AnalysisInput } from './analysis.ts'
+import type { AnalysisResult } from './analysis.ts'
+import type { TranscriptSegment } from './transcripts.ts'
 
 export const maxAnalysisBatchSize = 25
 export const analysisAttemptLeaseMs = 10 * 60_000
 
 export type AnalysisJobStatus = 'queued' | 'analyzing' | 'completed' | 'failed' | 'needs-attention' | 'skipped'
+
+export type AnalysisDiagnostic = {
+  stage: string
+  reason: string
+  requestId?: string
+  status?: number
+  field?: string
+  providerStatus?: number
+  providerRequestId?: string
+  step?: string
+}
 
 export type AnalysisJob = {
   id: string
@@ -22,7 +33,8 @@ export type AnalysisJob = {
   attemptId?: string
   leaseUntil?: number
   message?: string
-  completedSteps?: { id: string; result: AnalysisResult }[]
+  diagnostic?: AnalysisDiagnostic
+  completedSteps?: { id: string; result: AnalysisResult; hasOmittedFindings?: boolean }[]
   totalSteps?: number
   chunkerVersion?: string
 }

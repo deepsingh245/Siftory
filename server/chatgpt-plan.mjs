@@ -138,6 +138,9 @@ function responseError(response, message, code) {
       break
   }
   const error = new CheckError(`${message} (${details.join(', ')})`)
+  error.providerCode = code
+  error.providerStatus = response.status
+  if (requestId && /^req_[a-zA-Z0-9_-]{1,80}$/.test(requestId)) error.providerRequestId = requestId
   if (response.status === 401) error.status = 401
   if (response.status === 429 || code === 'subscription_sharing_usage_limit_exceeded') {
     error.status = 429
@@ -217,6 +220,14 @@ export async function exchangeCode(attempt) {
       code_verifier: attempt.verifier, redirect_uri: attempt.redirectUri, resource,
     }),
   }), 'Sign-in exchange')).json()
+}
+
+export async function refreshSession(clientId, refreshToken) {
+  return (await requireSuccess(await request(`${issuer}/api/accounts/oauth/token`, {
+    method: 'POST', body: new URLSearchParams({
+      grant_type: 'refresh_token', client_id: clientId, refresh_token: refreshToken, resource,
+    }),
+  }), 'Session renewal')).json()
 }
 
 export async function listModels(accessToken) {

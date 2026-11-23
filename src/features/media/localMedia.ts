@@ -74,3 +74,7 @@ export async function downloadLocalAudio(key: string): Promise<void> {
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
+
+export function localAudioUrl(key: string): string | undefined {
+  if (sourceKey.test(key)) return `/api/media/audio?key=${encodeURIComponent(key)}`
+}

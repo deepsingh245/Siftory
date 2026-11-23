@@ -1,7 +1,7 @@
-import { analysisFingerprint, analysisId, getMentionedLinks, prepareAnalysisInput, prepareTranscriptAnalysisInput, validateAnalysis } from '../../domain/analysis'
+import { AnalysisValidationError, analysisFingerprint, analysisId, getMentionedLinks, prepareAnalysisInput, prepareTranscriptAnalysisInput, validateAnalysis } from '../../domain/analysis'
 import type { Analysis, AnalysisResult } from '../../domain/analysis'
 import { createAnalysisJob, maxAnalysisBatchSize } from '../../domain/analysisQueue'
-import type { AnalysisJob, AnalysisReview, ReviewItem } from '../../domain/analysisQueue'
+import type { AnalysisDiagnostic, AnalysisJob, AnalysisReview, ReviewItem } from '../../domain/analysisQueue'
 import { displayTitle } from '../../domain/library'
 import { TEXT_EXTRACTION_VERSION } from '../../domain/processing'
 import { createTranscriptAnalysisPlan, locateTranscriptTimestamp, transcriptAnalysisProvenance, transcriptChunkerVersion, transcriptStepInput } from '../../domain/transcriptAnalysis'
@@ -74,9 +74,11 @@ export async function runReviewedAnalysis(
     }
     if (claim.state === 'changed') message = 'Some source text changed. Open those items and review the new text.'
     if (claim.state !== 'claimed') continue
+    let currentStep: string | undefined
     try {
       await update()
       let result: AnalysisResult
+      let hasOmittedFindings = job.completedSteps?.some((step) => step.hasOmittedFindings) ?? false
       let evidenceSource = input.text
       let transcriptSegments: import('../../domain/transcripts').TranscriptSegment[] | undefined
       if (input.kind === 'transcript') {
@@ -86,13 +88,16 @@ export async function runReviewedAnalysis(
         const results = new Map((job.completedSteps ?? []).map((entry) => [entry.id, entry.result]))
         for (const step of steps) {
           if (results.has(step.id)) continue
+          currentStep = step.id
           const text = transcriptStepInput(step, results)
           const response = await provider.analyze(job.model, text, connectionId)
           const validated = validateAnalysis(response.result, text)
-          if (!await repository.saveAnalysisStep(job.id, claim.attemptId, step.id, validated)) throw new Error('The analysis attempt expired before progress could be saved. Review and retry; completed transcript steps are retained.')
+          hasOmittedFindings ||= response.hasOmittedFindings === true
+          if (!await repository.saveAnalysisStep(job.id, claim.attemptId, step.id, validated, response.hasOmittedFindings)) throw new Error('The analysis attempt expired before progress could be saved. Review and retry; completed transcript steps are retained.')
           results.set(step.id, validated)
           await update()
         }
+        currentStep = 'final'
         const finalStep = steps[steps.length - 1]
         const finalResult = results.get(finalStep.id)
         if (!finalResult) throw new Error('The transcript analysis did not produce a final result. Retry the item.')
@@ -102,9 +107,10 @@ export async function runReviewedAnalysis(
       } else {
         const response = await provider.analyze(job.model, input.text, connectionId)
         result = validateAnalysis(response.result, input.text)
+        hasOmittedFindings = response.hasOmittedFindings === true
       }
       if (!result) throw new Error('The analysis did not produce a result. Review and retry the item.')
-      const validatedResult = validateAnalysis(result, evidenceSource)
+      const validatedResult = validateAnalysis(result, evidenceSource, () => { hasOmittedFindings = true })
       const resultWithProvenance: AnalysisResult = transcriptSegments ? {
         summary: { ...validatedResult.summary, timestampMs: locateTranscriptTimestamp(validatedResult.summary.evidence, transcriptSegments) },
         points: validatedResult.points.map((note) => ({ ...note, timestampMs: locateTranscriptTimestamp(note.evidence, transcriptSegments) })),
@@ -115,13 +121,22 @@ export async function runReviewedAnalysis(
         id: job.id, savedItemId: job.savedItemId, fingerprint: job.fingerprint, version: job.version,
         kind: job.kind, model: job.model, provider: 'chatgpt-plan', createdAt: new Date().toISOString(),
         result: resultWithProvenance, links: getMentionedLinks(input.text, input.truncated),
+        ...(hasOmittedFindings ? { hasOmittedFindings: true } : {}),
       }
       if (await repository.completeAnalysisJob(analysis, claim.attemptId, input)) completed.push(analysis)
       else message = 'A result could not be saved because the source changed or the attempt expired.'
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : 'Analysis failed.'
       const pause = cause instanceof TypeError || (cause instanceof ChatGptRequestError && [401, 403, 409, 429, 503].includes(cause.status))
-      await repository.failAnalysisJob(job.id, claim.attemptId, pause ? 'needs-attention' : 'failed', detail)
+      let diagnostic: AnalysisDiagnostic | undefined
+      if (cause instanceof ChatGptRequestError) {
+        diagnostic = { stage: 'request', reason: detail, status: cause.status, ...cause.diagnostic, step: currentStep }
+      } else if (cause instanceof AnalysisValidationError) {
+        diagnostic = { stage: 'local validation', field: cause.field, reason: cause.reason, step: currentStep }
+      } else if (cause instanceof TypeError) {
+        diagnostic = { stage: 'local request', reason: 'The browser could not complete the request. Check that Siftory is still running.', step: currentStep }
+      }
+      await repository.failAnalysisJob(job.id, claim.attemptId, pause ? 'needs-attention' : 'failed', detail, diagnostic)
       message = detail
       if (pause) break
     } finally {

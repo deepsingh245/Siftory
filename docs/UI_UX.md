@@ -34,6 +34,8 @@ Global search should be accessible from every main screen.
 
 Purpose: review newly imported items and decide what happens next.
 
+The default list pairs each title and creator with the saved date and a short review status. Use the stage filter to find transcripts, completed analyses, or items that need attention. Row actions reveal the original link, processing, filing, and removal. Bulk AI selection shows checkboxes and highlights selected rows.
+
 Content:
 - New imports.
 - Items needing attention.
@@ -91,13 +93,17 @@ Content:
 
 ### Saved item detail
 
-Suggested layout:
-- Header: title, source, creator, saved date and original link.
-- Main column: preview, transcript/extracted content, summary and key takeaways.
-- Secondary panel: categories, tags, collections, processing state and related items.
-- Timeline/timestamp section when timing data exists.
+- Keep the saved title, source, and original link in one compact header.
+- Open on Overview for the saved summary, key points, and app links. Put source quotes behind named disclosures, with a direct jump to the transcript when a quote has a verified timestamp.
+- Give Transcript and Item details dedicated keyboard navigable tabs. Keep the transcript player and edit controls together. Put source metadata, notes, labels, and item removal in Item details.
+- Keep the GPT review and consent controls available after a result is saved through a "Run another analysis" disclosure. Keep them visible when no result exists.
+- Use one column at small widths and check the layout at 320 CSS pixels. Preserve the item URL while navigating the views.
+
+This follows the [WAI tabs pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) and [GOV.UK guidance on revealing secondary detail](https://design-system.service.gov.uk/components/details/).
 
 The detail page must work even when only a URL and metadata are available.
+
+The transcript reads as one continuous document with optional timestamp controls and local audio. A confirmation is visible on the transcript and in Inbox. Text editing preserves timings and audio references for the same source. Replacement and removal sit under Manage transcript. OpenAI receives the selected text only after separate consent.
 
 ### Research
 

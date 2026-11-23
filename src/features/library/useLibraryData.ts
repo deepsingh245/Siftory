@@ -6,7 +6,8 @@ import type { ExtractedContent, ProcessingCapability, ProcessingJob } from '../.
 import type { TranscriptContent } from '../../domain/transcripts'
 import type { ResearchSession, ResearchReview } from '../../domain/research'
 import { getProcessingCapability } from '../../domain/processing'
-import { createLibraryRepository } from '../../infrastructure/persistence/libraryRepository'
+import type { LibraryRepository } from '../../infrastructure/persistence/libraryRepository'
+import { createLocalLibrary } from '../../infrastructure/persistence/localLibrary'
 import { queueProcessingItem, retryProcessingJob, runProcessingJob, runQueuedProcessing } from '../processing/processingService'
 import { prepareAnalysisReview, queueReviewedAnalysis, runReviewedAnalysis } from '../analysis/analysisQueueService'
 import type { AnalysisRun } from '../analysis/analysisQueueService'
@@ -14,7 +15,7 @@ import { chatgpt } from '../analysis/chatgptClient'
 import { prepareResearchReview, submitResearch } from '../research/researchService'
 import { syncLocalMediaTranscripts } from '../media/localMedia'
 
-const repository = createLibraryRepository(undefined, () => {
+const repository = createLocalLibrary(() => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('siftory:database-blocked'))
 })
 
@@ -49,7 +50,7 @@ export type LibraryData = {
     saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => Promise<ResearchSession>
     deleteResearchSession: (id: string) => Promise<void>
     applySuggestedCategory: (id: string, name: string) => Promise<void>
-    saveImportedBatch: ReturnType<typeof createLibraryRepository>['saveImportedBatch']
+    saveImportedBatch: LibraryRepository['saveImportedBatch']
     queueAnalysis: (review: AnalysisReview) => Promise<number>
     startAnalysis: (review: AnalysisReview, connectionId: string, enqueue?: boolean) => Promise<AnalysisRun>
     setAnalysisJobQueueState: (id: string, status: 'queued' | 'skipped') => Promise<void>
@@ -218,7 +219,13 @@ export function useLibraryData(): LibraryData {
     saveResearch: (review: ResearchReview, selectedIds: string[], connectionId: string) => submitResearch(repository, review, selectedIds, connectionId, chatgpt),
     deleteResearchSession: (id: string) => perform(() => repository.deleteResearchSession(id)),
     applySuggestedCategory: (id: string, name: string) => perform(() => repository.applySuggestedCategory(id, name)),
-    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[], duplicates?: ReadonlySet<string>) => perform(() => repository.saveImportedBatch(items, files, duplicates)),
+    saveImportedBatch: (items: SavedItem[], files: SourceFileRecord[], duplicates?: ReadonlySet<string>) => perform(async () => {
+      const result = await repository.saveImportedBatch(items, files, duplicates)
+      if (items.some((item) => item.sourceType === 'instagram') && result.savedIds.length) {
+        void syncLocalMediaTranscripts(repository).then((attached) => attached ? refresh() : undefined).catch(() => undefined)
+      }
+      return result
+    }),
     queueAnalysis,
     startAnalysis,
     setAnalysisJobQueueState: async (id: string, status: 'queued' | 'skipped') => {
