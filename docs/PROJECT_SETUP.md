@@ -10,7 +10,7 @@ The repository was initialized with Git before this task. No remote push or comm
 
 - Product, requirements, design, UX, architecture, data model, roadmap, decisions, workflow, and AI implementation guidance are organized under `docs/`.
 - `AGENTS.md` contains project-wide development instructions.
-- `.agents/skills/siftory-project-context/SKILL.md` provides reusable Siftory context. The personal skills collection is local-only and Git-ignored.
+- Optional skills under `.agents/` are local-only and Git-ignored.
 - A Vite React + TypeScript starter is configured at the repository root, with npm scripts and a lockfile.
 - The HTML metadata and favicon use Siftory's name, palette, and documented tagline.
 - The app shell uses semantic CSS tokens, dark and light themes, responsive navigation, and an empty-state illustration built with CSS.
@@ -101,7 +101,7 @@ No existing application logic was available to reuse during the Phase 0 audit. P
 ## AI setup
 
 - `AGENTS.md` is the automatically applicable project instruction file for Codex.
-- `.agents/skills/siftory-project-context/SKILL.md` points to authoritative product documents and reinforces privacy, AI, and provenance boundaries.
+- The optional local Siftory context skill points to the product documents and reinforces the privacy, AI, and provenance rules in `AGENTS.md`.
 - Core skills are copied from the Claude Engineering Starter template (`template/.claude/skills`); optional packs come from `optional-skills/` and are chosen based on the app's stack and needs. They are copied into `.agents/skills/` and intentionally Git-ignored. The initializer accepts repeated `--include-skill <name>` flags.
 - Local skills available here: `emil-design-eng`, `improve-animations`, `review-animations`, `vercel-react-best-practices`, `graphify`, `data-integrity-and-imports`, `privacy-security-review`, `accessibility-review`, and `testing-release-readiness`. Graphify CLI remains a separate optional global install.
 - `docs/ai/CODEX_MASTER_PROMPT.md` is the full phased product brief for implementation-start tasks.

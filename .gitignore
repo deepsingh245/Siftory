@@ -78,11 +78,5 @@ Desktop.ini
 .idea/
 *.code-workspace
 
-.agents/
-!.agents/
-/.agents/*
-!.agents/skills/
-/.agents/skills/*
-!.agents/skills/siftory-project-context/
-/.agents/skills/siftory-project-context/*
-!.agents/skills/siftory-project-context/SKILL.md
+# Local AI skills and agent files
+/.agents/

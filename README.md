@@ -2,80 +2,75 @@
 
 **Save less. Understand more.**
 
-Your personal library for everything worth knowing.
+Siftory is a local-first research library for saved posts, links, documents, and transcripts. Import what you want to keep, review it in your Inbox, and find it again by searching or organizing it. Connect ChatGPT when you want a summary, key points, or an answer grounded in your saved sources.
 
-Siftory is a local-first personal knowledge library and research workspace. It supports reviewed imports, local text extraction, ChatGPT-plan analysis, transcripts, and library research. An optional local media trial can produce audio and transcripts for accessible Instagram links.
+![Siftory dashboard showing library totals, recent activity, and saved items](docs/images/dashboard.png)
 
-## Development
+## Quick start
 
-Use Node.js 24 or newer and run the app on this machine. The app supports manual entries, Inbox and All Saved, organization, search, and imports from Instagram JSON, bookmarks, URLs, PDFs, and plain text. Imports are parsed locally and reviewed before saving.
+Use Node.js 24 or newer. From the repository root, run:
 
 ```sh
-npm install
+npm ci
 npm run dev
-npm run build
-npm run lint
-npm test
 ```
 
-## Dashboard theme
+Open the local address printed by Vite, usually `http://localhost:5173`. Use the same browser profile and address when reopening an existing library or ChatGPT connection.
 
-The dashboard adapts the free [shadcn dashboard block](https://ui.shadcn.com/blocks/dashboard). Edit the light palette under `:root` and the dark palette under `.dark` in [src/styles/theme.css](src/styles/theme.css). For example, change `--primary` and `--primary-foreground` together for primary actions, or change `--chart-1` for the activity series. The sidebar and existing screens use the same palette.
+## What you can do
 
-Run `npm run build` then `npm run test:browser` to check the dashboard in an isolated Puppeteer session. The test uses installed Chrome. Set `SIFTORY_CHROME_PATH` for a nonstandard installation. The screenshots are saved to `test-results/shadcn/`.
+| Area | Workflow |
+| --- | --- |
+| **Import** | Preview Instagram JSON exports, browser bookmarks, web links, PDFs, and text files before saving them to the Inbox. Imports are parsed locally. |
+| **Review** | Sort and filter your Inbox, move useful items to All Saved, and organize them with collections, categories, and tags. |
+| **Transcripts** | Attach text, SRT, or WebVTT. Review timed segments and seek through source audio when a local recording is available. |
+| **AI analysis** | Use your connected ChatGPT plan to summarize reviewed text, extract key points with source quotes, and suggest categories. Use **App links** to check selected names or store listings. |
+| **Research** | Search saved captions, transcripts, and extracted text locally. Review the source excerpts before requesting a cited answer from ChatGPT. |
 
-## Local storage and ChatGPT
+The processing queue supports local plain-text extraction and shows the status of analysis jobs.
 
-In the browser and address where the existing seven imports are visible, open **Settings → Local storage → Move seven imports to SQLite**. Siftory identifies the items from the local `data.json`, writes and verifies a private backup under `.siftory/backups/`, then checks the migrated data before using SQLite. Keep the original browser library and the backup for recovery. Settings shows the database size, attachments, referenced audio, and reusable pages.
+## Storage and privacy
 
-On Windows, connect ChatGPT once from Settings after updating. The local server encrypts the renewable OAuth session with Windows DPAPI and restores it for the same browser and address after restart. OpenAI can expire or revoke the grant. Your library works independently of ChatGPT, and analysis still requires review and consent.
+The library starts in browser storage. For the existing seven-import migration, open **Settings → Local storage → Move seven imports to SQLite** in the browser where those items are visible. Siftory matches them against your local `data.json`, verifies a backup in `.siftory/backups/`, and checks the migrated records before switching to SQLite.
 
-If analysis fails, open **Processing queue → Error details** on the job. Match its request ID to the `[Siftory AI]` entry in the terminal where Siftory is running. These diagnostics omit source text, model response bodies, and credentials.
+The SQLite file is `.siftory/library.sqlite3`. Settings shows the database size, attachments, referenced audio, and space SQLite can reuse. Keep the original browser data and its backup for recovery. SQLite data, local exports, generated media, and the `.agents/` skills directory are Git-ignored.
 
-If an optional finding has a quote that cannot be matched exactly, Siftory keeps the supported analysis and marks that some findings were omitted. The summary still requires an exact source quote.
+### ChatGPT connection
 
-Open **App links** in a saved analysis to check selected app names and store links. Name searches use Apple's public catalog. Direct Google Play links can also be checked. Other URLs stay under **Links in the text**.
+Connect from **Settings → ChatGPT connection**. On Windows, the local server encrypts the renewable session with Windows DPAPI so it can restore the connection after a restart. OpenAI can expire or revoke the grant at any time. The library works independently of ChatGPT, and sending text for analysis or research requires a separate review and confirmation.
 
-## Optional local media trial
+If an analysis fails, open **Processing queue → Error details** and match the request ID to the `[Siftory AI]` entry in the local server terminal. Diagnostics omit source text, model responses, and credentials. Siftory keeps supported findings when an optional quote fails validation and requires an exact source quote for the summary.
 
-The trial uses Python 3.12+, free `yt-dlp`, a local FFmpeg binary, and `faster-whisper`. It attempts direct, accessible Instagram post/Reel links without login, cookies, or retries. Instagram access is unofficial and can stop working or be restricted; use it only for media you are permitted to process. Local files work independently of Instagram. The first transcription downloads a speech model; media and transcript processing remain on this device.
+App lookup sends only your selections. Name searches use Apple’s public catalog, and direct Google Play links can also be checked.
 
-In PowerShell, from the repository root:
+## Optional media transcription
+
+The local media trial uses Python 3.12+, FFmpeg, `yt-dlp`, and `faster-whisper`. It can transcribe a local media file or try an accessible Instagram post or Reel. Instagram access is unofficial and can change. Use it only for media you are permitted to process. The first run downloads the speech model, then transcription runs on this device.
 
 ```powershell
 python -m venv .siftory/media-venv
 .siftory/media-venv/Scripts/python.exe -m pip install -r scripts/media-requirements.txt
-.siftory/media-venv/Scripts/python.exe scripts/media_trial.py --instagram-json path/to/saved.json --max-items 20 --model base
+.siftory/media-venv/Scripts/python.exe scripts/media_trial.py --file path/to/video.mp4 --model base
 ```
 
-Use `--file path/to/video.mp4` for a local video or audio file, `--url https://www.instagram.com/reel/SHORTCODE/` for one link, or `--audio-only` to skip transcription. Each run writes WAV audio, SRT subtitles, and a result manifest under the Git-ignored `.siftory/media/` folder. It never changes the original export. Repeating a completed run skips existing results; a prior audio-only result is transcribed without another download. `--rerun` creates a separate result folder.
+Use `--url` for one Instagram link, `--instagram-json path/to/saved.json --max-items 20` for a batch, or `--audio-only` to skip transcription. Output goes to `.siftory/media/`. While Siftory is open, it checks for newly generated transcripts and attaches them to matching Instagram items that have no transcript. [Media trial setup and options](docs/phases/PHASE-6-LOCAL-MEDIA-TRIAL.md)
 
-While the local Siftory app is open, it checks that folder every 30 seconds and attaches generated transcripts to matching saved Instagram links that have no transcript. Removing a transcript stops automatic attachment for that item until you enable it again. Item detail provides audio playback, timestamp seeking, and download. AI analysis still requires its separate review and consent. See [the trial plan](docs/phases/PHASE-6-LOCAL-MEDIA-TRIAL.md).
+## Development
 
-## Start here
+Siftory uses React, TypeScript, Vite, and shadcn/ui. The shared light and dark palettes live in [the theme stylesheet](src/styles/theme.css).
 
-1. Read [`docs/PLAN.md`](docs/PLAN.md) for the phase overview and how detailed phase plans will be created.
-2. Read [`AGENTS.md`](AGENTS.md) for the project-wide AI working agreement.
-3. Read [`docs/PROJECT_SETUP.md`](docs/PROJECT_SETUP.md) for the repository audit and current setup status.
-4. Read [`docs/PRODUCT.md`](docs/PRODUCT.md), [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md), and [`docs/DECISIONS.md`](docs/DECISIONS.md) for product scope and decisions.
-5. Read design and technical guidance before work in those areas: `docs/DESIGN_SYSTEM.md`, `docs/UI_UX.md`, `docs/ARCHITECTURE.md`, and `docs/DATA_MODEL.md`.
-6. Use [`docs/ai/CODEX_MASTER_PROMPT.md`](docs/ai/CODEX_MASTER_PROMPT.md) as the phased implementation brief when starting app work.
+```sh
+npm run lint
+npm test
+npm run build
+npm run test:browser
+```
 
-## Documentation map
+The browser check uses installed Chrome and synthetic data. Set `SIFTORY_CHROME_PATH` for a nonstandard Chrome installation. Screenshots go to `test-results/shadcn/`.
 
-- `AGENTS.md` — persistent Codex instructions for this repository.
-- `docs/PLAN.md` — high-level phase sequence and the process for planning each coding phase.
-- `docs/PROJECT_SETUP.md` — audit findings, initial folder plan, and setup checklist.
-- `docs/PRODUCT.md` — vision, users, product areas, principles, and non-goals.
-- `docs/REQUIREMENTS.md` — functional and quality requirements.
-- `docs/DESIGN_SYSTEM.md` and `docs/UI_UX.md` — visual system and screen/interaction plans.
-- `docs/ARCHITECTURE.md` and `docs/DATA_MODEL.md` — target boundaries and conceptual data model.
-- `docs/ROADMAP.md` — phased delivery and acceptance criteria.
-- `docs/DECISIONS.md` — confirmed, proposed, and open decisions.
-- `docs/CODEX_WORKFLOW.md` — AI-assisted task workflow.
-- `docs/ai/CODEX_MASTER_PROMPT.md` — full product and implementation brief.
-- `.agents/skills/siftory-project-context/SKILL.md` — reusable project-specific AI skill.
-
-## Product boundaries
-
-Siftory is local-first, with manual backup and restore and no mandatory cloud service or paid AI API. Codex helps develop the product; it is not the app's runtime AI provider. See the decision and architecture docs before selecting implementation details.
+| Topic | Documentation |
+| --- | --- |
+| Product and scope | [Product](docs/PRODUCT.md) · [Requirements](docs/REQUIREMENTS.md) |
+| Architecture and decisions | [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) · [Decisions](docs/DECISIONS.md) |
+| Interface | [Design system](docs/DESIGN_SYSTEM.md) · [UI and workflows](docs/UI_UX.md) |
+| Project work | [Phase plan](docs/PLAN.md) · [Setup notes](docs/PROJECT_SETUP.md) · [Working agreement](AGENTS.md) |
