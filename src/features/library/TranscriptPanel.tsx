@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Disclosure } from '@/components/ui/disclosure'
 import { createTranscriptContent, parseTranscript, parseTranscriptFile, type TranscriptContent, type TranscriptOrigin } from '../../domain/transcripts'
 import type { SavedItem } from '../../domain/library'
 import type { LibraryData } from './useLibraryData'
@@ -156,8 +157,8 @@ export function TranscriptPanel({ item, data, cue, active }: { item: SavedItem; 
       </div>
       {!transcript.confirmedAt && <button className="quiet-button transcript-confirm" type="button" disabled={busy} onClick={() => void confirmTranscript()}>Confirm transcript</button>}
     </> : !loading && <div className="transcript-empty"><p>Attach spoken text to read it here and use it in analysis.</p>{item.autoTranscriptDismissed && <button className="quiet-button" type="button" onClick={() => { void data.actions.allowAutoTranscript(item.id).then(() => setStatus('Automatic local transcript attachment is enabled again.')).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not enable automatic attachment.')) }}>Allow automatic local transcript again</button>}</div>}
-    {!loading && <details className="transcript-edit" open={!transcript}>
-      <summary>{transcript ? 'Manage transcript' : 'Attach a transcript'}</summary>
+    {!loading && <Disclosure key={transcript ? 'manage' : 'attach'} className="transcript-edit" defaultOpen={!transcript}
+      label={transcript ? 'Manage transcript' : 'Attach a transcript'}>
       {transcript && editText === undefined && <button className="quiet-button" type="button" onClick={() => setEditText(transcript.segments.length
         ? transcript.segments.map((segment, index) => `${index + 1}\n${subtitleTime(segment.startMs)} --> ${subtitleTime(segment.endMs)}\n${segment.text}`).join('\n\n') : transcript.text)}>Edit saved text</button>}
       {editText !== undefined && <form onSubmit={(event) => void saveEdits(event)}>
@@ -176,6 +177,6 @@ export function TranscriptPanel({ item, data, cue, active }: { item: SavedItem; 
         <div className="transcript-edit-actions"><button className="primary-button" type="submit" disabled={busy || (!file && !text.trim())}>{busy ? 'Saving transcript…' : transcript ? 'Replace transcript' : 'Attach transcript'}</button>{transcript && <button className="quiet-button danger-button" type="button" disabled={busy} onClick={() => void remove()}>Remove transcript</button>}</div>
       </form>
       </>}
-    </details>}
+    </Disclosure>}
   </section>
 }

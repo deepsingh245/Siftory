@@ -16,19 +16,25 @@ Mobile structure:
 
 ## Primary navigation
 
-1. Inbox
+1. Dashboard
 2. All Saved
-3. Collections
-4. Categories
-5. Recently Viewed
-6. Research
-7. Processing Queue
-8. Insights
-9. Settings
+3. Inbox
+4. Import
+5. Collections
+6. Categories
+7. Tags
+8. Recently Viewed
+9. Research
+10. Processing Queue
+11. Settings
 
 Global search should be accessible from every main screen.
 
 ## Screen specifications
+
+### Dashboard
+
+The default view adapts shadcn's free `dashboard-01` block. Summary cards show the local library size, Inbox, attached transcripts, and items with jobs that need attention. Activity uses actual dates when items were added, with a table of daily counts available under the chart. The recent items table links to each item. The dashboard shares search, navigation, and the theme switch with the rest of Siftory.
 
 ### Inbox
 
@@ -148,14 +154,7 @@ Do not prioritise vanity charts. Only show insights supported by actual indexed 
 
 ### Settings
 
-Sections:
-- Appearance.
-- Import and export.
-- Storage.
-- Processing preferences.
-- AI providers and permissions.
-- Privacy and data controls.
-- About/version.
+The Settings page groups the ChatGPT connection and local storage into separate cards. The cards sit side by side on wide workspaces and stack on narrow ones. Show library connection errors and retry actions in Local storage. Appearance is available in the workspace header.
 
 ## Key user journeys
 

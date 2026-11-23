@@ -28,7 +28,6 @@
 
 .library-page-heading h1,
 .item-detail-heading h1 {
-  font-family: Georgia, Cambria, serif;
   font-weight: 500;
   letter-spacing: -.035em;
   line-height: 1.12;
@@ -39,29 +38,8 @@
   max-width: 58ch;
 }
 
-.primary-button,
-.quiet-button,
-.sort-field select,
-.view-toggle button {
-  min-height: 42px;
-}
-
-.library-toolbar {
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .library-filter-disclosure {
   margin-block: .5rem 1rem;
-}
-
-.library-filter-disclosure > summary,
-.transcript-edit > summary,
-.source-details > summary {
-  cursor: pointer;
-  color: var(--foreground);
-  padding-block: .55rem;
-  font-weight: 600;
 }
 
 .inbox-list {
@@ -127,7 +105,7 @@
 .inbox-row p,
 .inbox-row-status {
   margin: .25rem 0 0;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: .875rem;
 }
 
@@ -142,29 +120,12 @@
   font-weight: 600;
 }
 
-.inbox-actions summary {
-  cursor: pointer;
-  padding: .35rem;
-  color: var(--muted-strong);
-}
-
-.inbox-actions > div {
-  display: flex;
-  flex-flow: column;
-  align-items: flex-start;
-  gap: .4rem;
-  margin: .5rem 0 0;
-}
-
-.inbox-actions a,
 .transcript-audio button,
 .analysis-batch a {
   color: var(--primary-strong);
 }
 
-.detail-panel,
-.detail-main > .processing-panel,
-.storage-settings {
+.detail-main > .processing-panel {
   min-width: 0;
   border: 0;
   border-top: 1px solid var(--border);
@@ -179,7 +140,6 @@
   min-width: 0;
 }
 
-.detail-panel p,
 .detail-list dd,
 .transcript-provenance,
 .analysis-connection {
@@ -197,7 +157,6 @@
 
 .reading-section-heading h2 {
   margin: 0;
-  font-family: Georgia, Cambria, serif;
   font-size: clamp(1.5rem, 2.9vw, 2rem);
   font-weight: 500;
 }
@@ -208,6 +167,10 @@
 }
 
 .reading-status--ready,
+.inline-success {
+  color: var(--success);
+}
+
 .analysis-connection {
   color: var(--primary-strong);
 }
@@ -215,7 +178,7 @@
 .transcript-provenance,
 .transcript-review-note {
   margin: .5rem 0;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font-size: .9375rem;
 }
 
@@ -307,24 +270,6 @@
   line-height: 1.55;
 }
 
-.storage-breakdown {
-  display: grid;
-  gap: .5rem;
-  max-width: 42ch;
-}
-
-.storage-breakdown div {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: .3rem 1rem;
-}
-
-.storage-breakdown dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
 @media (max-width: 680px) {
   .workspace .workspace-topline {
     align-items: stretch;
@@ -344,10 +289,6 @@
     flex-direction: row;
     flex-wrap: wrap;
     gap: .25rem .65rem;
-  }
-
-  .inbox-actions[open] {
-    grid-column: 1 / -1;
   }
 
   .mobile-nav .nav-link {

@@ -1,5 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
+import { Archive, Ellipsis, ExternalLink, Trash2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Disclosure } from '@/components/ui/disclosure'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { FieldSelect } from '@/components/ui/field-select'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   contentTypes,
   createSavedItem,
@@ -14,12 +24,10 @@ import type { AppRoute } from '../../app/routes'
 import type {
   Category,
   Collection,
-  ContentType,
   ItemDraft,
   ItemFilters,
   SavedItem,
   SourceFileRecord,
-  SourceType,
   Tag,
 } from '../../domain/library'
 import type { LibraryData } from './useLibraryData'
@@ -48,7 +56,16 @@ type Props = {
 export function LibraryWorkspace({ route, data, query }: Props) {
   const [filters, setFilters] = useState<Omit<ItemFilters, 'query' | 'status'>>({ sort: 'recent' })
 
-  if (route.page === 'settings') return <><ChatGptSettings /><StorageSettings refresh={data.refresh} /></>
+  if (route.page === 'settings') return <section className="max-w-5xl space-y-5" aria-labelledby="settings-heading">
+    <div>
+      <h1 id="settings-heading" className="text-3xl font-semibold tracking-tight">Settings</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Manage your ChatGPT connection and local library storage.</p>
+    </div>
+    <div className="grid items-start gap-4 @min-[54rem]:grid-cols-2">
+      <ChatGptSettings />
+      <StorageSettings refresh={data.refresh} libraryError={data.loading ? undefined : data.error} />
+    </div>
+  </section>
   if (route.page === 'research') return <ResearchWorkspace sessionId={route.id} data={data} />
 
   if (data.loading) {
@@ -169,6 +186,8 @@ function LibraryListing({
   const [showAnalysisReview, setShowAnalysisReview] = useState(false)
   const [reviewFilter, setReviewFilter] = useState('all')
   const inbox = route.page === 'inbox'
+  const activeFilterCount = [filters.sourceType, filters.contentType, filters.collectionId, filters.categoryId, filters.tagId, filters.fromDate, filters.toDate].filter(Boolean).length
+  const hasSearchOrFilters = Boolean(query || activeFilterCount || (inbox && reviewFilter !== 'all'))
   const latestAnalysis = new Map<string, LibraryData['analysisJobs'][number]>()
   for (const job of data.analysisJobs) {
     const current = latestAnalysis.get(job.savedItemId)
@@ -226,9 +245,9 @@ function LibraryListing({
           <p className="library-page-description">{description}</p>
         </div>
         {canAdd && (
-          <button className="primary-button" type="button" onClick={() => setShowForm((visible) => !visible)}>
+          <Button type="button" onClick={() => setShowForm((visible) => !visible)}>
             <span aria-hidden="true">+</span> Add item
-          </button>
+          </Button>
         )}
       </div>
 
@@ -236,41 +255,32 @@ function LibraryListing({
 
       {showForm && <ManualItemForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
 
-      {canAdd && <div className="analysis-selection-tools">
-        <button className="quiet-button" type="button" onClick={() => { setSelectingAnalysis((active) => !active); setAnalysisSelection([]); setShowAnalysisReview(false) }}>{selectingAnalysis ? 'Cancel AI selection' : 'Select items for AI analysis'}</button>
-        {selectingAnalysis && <span>Select up to {maxAnalysisBatchSize} items</span>}
-        {analysisSelection.length > 0 && <><span>{analysisSelection.length} of {maxAnalysisBatchSize} selected</span><button className="primary-button" type="button" disabled={showAnalysisReview} onClick={() => setShowAnalysisReview(true)}>Review selected text</button></>}
+      <div className="library-toolbar">
+        {inbox && <FieldSelect label="Filter by review status" hideLabel className="sort-field" value={reviewFilter}
+          onValueChange={setReviewFilter} options={[
+            ['all', 'All review stages'], ['attention', 'Needs attention'], ['transcript', 'Has transcript'], ['analyzed', 'Analyzed'],
+          ]} />}
+        <FieldSelect<NonNullable<ItemFilters['sort']>> label="Sort items" hideLabel className="sort-field" value={filters.sort ?? 'recent'}
+          onValueChange={(sort) => onFiltersChange({ ...filters, sort })} options={[
+            ['recent', 'Newest first'], ['oldest', 'Oldest first'], ['title', 'Title A to Z'], ['updated', 'Recently updated'],
+          ]} />
+        <div className="view-toggle" role="group" aria-label="Item view">
+          <Button type="button" variant={view === 'list' ? 'secondary' : 'ghost'} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</Button>
+          <Button type="button" variant={view === 'grid' ? 'secondary' : 'ghost'} aria-pressed={view === 'grid'} onClick={() => setView('grid')}>Grid</Button>
+        </div>
+        {canAdd && <Button className="library-analysis-toggle" variant={selectingAnalysis ? 'secondary' : 'outline'} type="button"
+          aria-pressed={selectingAnalysis} onClick={() => { setSelectingAnalysis((active) => !active); setAnalysisSelection([]); setShowAnalysisReview(false) }}>
+          {selectingAnalysis ? 'Cancel AI selection' : 'Select items for AI analysis'}
+        </Button>}
+      </div>
+
+      {selectingAnalysis && <div className="analysis-selection-tools">
+        <span>{analysisSelection.length ? `${analysisSelection.length} of ${maxAnalysisBatchSize} selected` : `Select up to ${maxAnalysisBatchSize} items`}</span>
+        {analysisSelection.length > 0 && <Button type="button" disabled={showAnalysisReview} onClick={() => setShowAnalysisReview(true)}>Review selected text</Button>}
       </div>}
       {showAnalysisReview && analysisSelection.length > 0 && <AnalysisBatchReview itemIds={analysisSelection} data={data} onClose={() => setShowAnalysisReview(false)} />}
 
-      <div className="library-toolbar">
-        {inbox && <label className="sort-field">
-          <span className="visually-hidden">Filter by review status</span>
-          <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value)}>
-            <option value="all">All review stages</option>
-            <option value="attention">Needs attention</option>
-            <option value="transcript">Has transcript</option>
-            <option value="analyzed">Analyzed</option>
-          </select>
-        </label>}
-        <label className="sort-field">
-          <span className="visually-hidden">Sort items</span>
-          <select value={filters.sort ?? 'recent'} onChange={(event) => onFiltersChange({ ...filters, sort: event.target.value as ItemFilters['sort'] })}>
-            <option value="recent">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="title">Title A to Z</option>
-            <option value="updated">Recently updated</option>
-          </select>
-        </label>
-        <div className="view-toggle" role="group" aria-label="Item view">
-          <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button>
-          <button type="button" aria-pressed={view === 'grid'} onClick={() => setView('grid')}>Grid</button>
-        </div>
-      </div>
-
-      <details className="library-filter-disclosure"><summary>Source and labels</summary>
-        <FilterPanel data={data} filters={filters} onChange={onFiltersChange} />
-      </details>
+      <FilterPanel data={data} filters={filters} activeCount={activeFilterCount} onChange={onFiltersChange} />
 
       <div className="result-summary" aria-live="polite">
         <span>{visibleItems.length} {visibleItems.length === 1 ? 'item' : 'items'}</span>
@@ -282,7 +292,7 @@ function LibraryListing({
           {visibleItems.map((item) => (
             <li key={item.id} data-selected={analysisSelection.includes(item.id) || undefined}>
               {canAdd && selectingAnalysis ? <label className="analysis-item-select"><input type="checkbox" checked={analysisSelection.includes(item.id)} disabled={!analysisSelection.includes(item.id) && analysisSelection.length >= maxAnalysisBatchSize} onChange={(event) => setAnalysisSelection((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span className="visually-hidden">Select {displayTitle(item)} for AI analysis</span></label> : null}
-              {inbox && view === 'list' ? <InboxRow item={item} data={data} job={latestAnalysis.get(item.id)} onSave={() => setItemStatus(item, 'saved')} onDelete={() => deleteItem(item)} /> : <SavedItemCard
+              {inbox && view === 'list' ? <InboxRow item={item} data={data} job={latestAnalysis.get(item.id)} onSave={() => setItemStatus(item, 'saved')} onDelete={() => deleteItem(item)} onProcessingError={setActionError} /> : <SavedItemCard
                 item={item}
                 data={data}
                 collections={data.collections}
@@ -297,8 +307,8 @@ function LibraryListing({
       ) : (
         <div className="library-empty-state">
           <span className="empty-state-mark" aria-hidden="true">{route.page === 'inbox' ? '○' : '✳'}</span>
-          <h2>{query || (inbox && reviewFilter !== 'all') ? 'No matching items' : emptyHeading(route, canAdd)}</h2>
-          <p>{query || (inbox && reviewFilter !== 'all') ? 'Try another phrase or change the filters.' : emptyDescription(route, canAdd)}</p>
+          <h2>{hasSearchOrFilters ? 'No matching items' : emptyHeading(route, canAdd)}</h2>
+          <p>{hasSearchOrFilters ? 'Try another phrase or change the filters.' : emptyDescription(route, canAdd)}</p>
           {canAdd && !showForm && (
             <button className="quiet-button" type="button" onClick={() => setShowForm(true)}>Add your first item</button>
           )}
@@ -308,14 +318,16 @@ function LibraryListing({
   )
 }
 
-function InboxRow({ item, data, job, onSave, onDelete }: {
+function InboxRow({ item, data, job, onSave, onDelete, onProcessingError }: {
   item: SavedItem
   data: LibraryData
   job?: LibraryData['analysisJobs'][number]
   onSave: () => void
   onDelete: () => void
+  onProcessingError: (message: string | undefined) => void
 }) {
   const date = item.savedAt ?? item.createdAt
+  const sourceUrl = item.url ? safeExternalUrl(item.url) : undefined
   const transcript = item.transcriptId
     ? item.transcriptConfirmedAt ? 'Transcript confirmed' : item.transcriptReviewedAt ? 'Transcript reviewed' : 'Transcript to review'
     : ['youtube', 'instagram'].includes(item.sourceType) ? 'No transcript' : undefined
@@ -331,15 +343,22 @@ function InboxRow({ item, data, job, onSave, onDelete }: {
       {analysis && <span className="inbox-ai-status">{analysis}</span>}
       <time dateTime={date}>{new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time>
     </div>
-    <details className="inbox-actions">
-      <summary aria-label={`Actions for ${displayTitle(item)}`}>Actions</summary>
-      <div>
-        {item.url && safeExternalUrl(item.url) && <a href={safeExternalUrl(item.url)} target="_blank" rel="noreferrer">Open source</a>}
-        <ProcessingCardAction item={item} data={data} />
-        <button className="quiet-button" type="button" onClick={onSave}>Move to All Saved</button>
-        <button className="quiet-button danger-button" type="button" onClick={onDelete}>Remove</button>
-      </div>
-    </details>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="size-11" aria-label={`Actions for ${displayTitle(item)}`}>
+          <Ellipsis aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52 max-w-(--radix-dropdown-menu-content-available-width)">
+        {sourceUrl && <DropdownMenuItem asChild className="min-h-9">
+          <a href={sourceUrl} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" /> Open source</a>
+        </DropdownMenuItem>}
+        <ProcessingCardAction item={item} data={data} onMenuError={onProcessingError} />
+        <DropdownMenuItem className="min-h-9" onSelect={onSave}><Archive aria-hidden="true" /> Move to All Saved</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="min-h-9" variant="destructive" onSelect={onDelete}><Trash2 aria-hidden="true" /> Remove</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   </article>
 }
 
@@ -401,8 +420,10 @@ function ManualItemForm({ onSave, onCancel, initialItem }: {
       <div className="form-grid">
         <TextField label="Title" value={draft.title} onChange={(value) => update('title', value)} placeholder="A name you'll recognize" />
         <TextField label="Link" value={draft.url ?? ''} onChange={(value) => update('url', value)} placeholder="https://example.com/..." type="url" />
-        <label className="form-field"><span>Source</span><select value={draft.sourceType} onChange={(event) => update('sourceType', event.target.value as SourceType)}>{sourceTypes.map((source) => <option key={source} value={source}>{humanize(source)}</option>)}</select></label>
-        <label className="form-field"><span>Content type</span><select value={draft.contentType} onChange={(event) => update('contentType', event.target.value as ContentType)}>{contentTypes.map((contentType) => <option key={contentType} value={contentType}>{humanize(contentType)}</option>)}</select></label>
+        <FieldSelect label="Source" value={draft.sourceType} onValueChange={(source) => update('sourceType', source)}
+          options={sourceTypes.map((source) => [source, humanize(source)])} />
+        <FieldSelect label="Content type" value={draft.contentType} onValueChange={(contentType) => update('contentType', contentType)}
+          options={contentTypes.map((contentType) => [contentType, humanize(contentType)])} />
         <TextField label="Creator" value={draft.creatorName ?? ''} onChange={(value) => update('creatorName', value)} placeholder="Optional" />
         <TextField label="Creator handle" value={draft.creatorHandle ?? ''} onChange={(value) => update('creatorHandle', value)} placeholder="Optional" />
         <TextField label="Description or caption" value={draft.description ?? ''} onChange={(value) => update('description', value)} placeholder="Optional" />
@@ -423,42 +444,41 @@ function TextField({ label, value, onChange, placeholder, type = 'text' }: {
   placeholder?: string
   type?: string
 }) {
-  return <label className="form-field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>
+  const id = useId()
+  return <div className="form-field">
+    <Label htmlFor={id}>{label}</Label>
+    <Input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+  </div>
 }
 
-function FilterPanel({ data, filters, onChange }: {
+function FilterPanel({ data, filters, activeCount, onChange }: {
   data: LibraryData
   filters: Omit<ItemFilters, 'query' | 'status'>
+  activeCount: number
   onChange: (filters: Omit<ItemFilters, 'query' | 'status'>) => void
 }) {
-  const activeCount = [filters.sourceType, filters.contentType, filters.collectionId, filters.categoryId, filters.tagId, filters.fromDate, filters.toDate].filter(Boolean).length
   return (
-    <details className="filter-panel">
-      <summary>Filters{activeCount ? <span className="filter-count">{activeCount}</span> : null}</summary>
-      <div className="filter-grid">
-        <SelectField label="Source" value={filters.sourceType ?? ''} onChange={(value) => onChange({ ...filters, sourceType: value as SourceType | '' })} options={sourceTypes.map((value) => [value, humanize(value)])} />
-        <SelectField label="Content type" value={filters.contentType ?? ''} onChange={(value) => onChange({ ...filters, contentType: value as ContentType | '' })} options={contentTypes.map((value) => [value, humanize(value)])} />
-        <SelectField label="Collection" value={filters.collectionId ?? ''} onChange={(value) => onChange({ ...filters, collectionId: value })} options={data.collections.map(({ id, name }) => [id, name])} />
-        <SelectField label="Category" value={filters.categoryId ?? ''} onChange={(value) => onChange({ ...filters, categoryId: value })} options={data.categories.map(({ id, name }) => [id, name])} />
-        <SelectField label="Tag" value={filters.tagId ?? ''} onChange={(value) => onChange({ ...filters, tagId: value })} options={data.tags.map(({ id, name }) => [id, `#${name}`])} />
+    <Disclosure className="library-filter-disclosure" variant="outline" label={
+      <>Source and labels{activeCount > 0 && <Badge className="ms-2" variant="secondary" aria-label={`${activeCount} active filters`}>{activeCount}</Badge>}</>
+    }>
+      <div className="filter-panel">
+        <div className="filter-grid">
+        <FieldSelect label="Source" value={filters.sourceType ?? ''} onValueChange={(sourceType) => onChange({ ...filters, sourceType })}
+          options={[['', 'Any'], ...sourceTypes.map((value) => [value, humanize(value)] as const)]} />
+        <FieldSelect label="Content type" value={filters.contentType ?? ''} onValueChange={(contentType) => onChange({ ...filters, contentType })}
+          options={[['', 'Any'], ...contentTypes.map((value) => [value, humanize(value)] as const)]} />
+        <FieldSelect label="Collection" value={filters.collectionId ?? ''} onValueChange={(collectionId) => onChange({ ...filters, collectionId })}
+          options={[['', 'Any'], ...data.collections.map(({ id, name }) => [id, name] as const)]} />
+        <FieldSelect label="Category" value={filters.categoryId ?? ''} onValueChange={(categoryId) => onChange({ ...filters, categoryId })}
+          options={[['', 'Any'], ...data.categories.map(({ id, name }) => [id, name] as const)]} />
+        <FieldSelect label="Tag" value={filters.tagId ?? ''} onValueChange={(tagId) => onChange({ ...filters, tagId })}
+          options={[['', 'Any'], ...data.tags.map(({ id, name }) => [id, `#${name}`] as const)]} />
         <TextField label="From date" value={filters.fromDate ?? ''} onChange={(value) => onChange({ ...filters, fromDate: value })} type="date" />
         <TextField label="To date" value={filters.toDate ?? ''} onChange={(value) => onChange({ ...filters, toDate: value })} type="date" />
-        <button className="quiet-button filter-reset" type="button" onClick={() => onChange({ sort: filters.sort })}>Clear filters</button>
+        </div>
+        {activeCount > 0 && <Button className="mt-2" variant="ghost" type="button" onClick={() => onChange({ sort: filters.sort })}>Clear filters</Button>}
       </div>
-    </details>
-  )
-}
-
-function SelectField({ label, value, onChange, options }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: readonly (readonly [string, string])[]
-}) {
-  return (
-    <label className="form-field"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>
-      <option value="">Any</option>{options.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
-    </select></label>
+    </Disclosure>
   )
 }
 
@@ -637,10 +657,11 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
       {editing && <ManualItemForm initialItem={item} onCancel={() => setEditing(false)} onSave={save} />}
       <div hidden={editing}>
         <div className="item-view-tabs" ref={tabList} role="tablist" aria-label="Saved item views" onKeyDown={navigateTabs}>
-          {tabs.map(({ id, title }) => <button
+          {tabs.map(({ id, title }) => <Button
             key={id} type="button" role="tab" id={`item-tab-${id}`} aria-controls={`item-view-${id}`}
+            variant="ghost"
             aria-selected={activeTab === id} tabIndex={activeTab === id ? 0 : -1} onClick={() => selectTab(id)}
-          >{title}</button>)}
+          >{title}</Button>)}
         </div>
         <div className="item-view-panel" hidden={activeTab !== 'overview'} id="item-view-overview" role="tabpanel" aria-labelledby="item-tab-overview" tabIndex={0}>
           {item.sourceType === 'text' && <ProcessingPanel item={item} data={data} />}
@@ -651,7 +672,7 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
         </div>}
         <div className="item-view-panel item-metadata-layout" hidden={activeTab !== 'details'} id="item-view-details" role="tabpanel" aria-labelledby="item-tab-details" tabIndex={0}>
           <div className="detail-main">
-            <section className="detail-panel source-details"><h2>Source details</h2>
+            <DetailCard title="Source details">
               <dl className="detail-list">
                 <DetailRow label="Original link">{item.url && safeExternalUrl(item.url) ? <a href={safeExternalUrl(item.url)} target="_blank" rel="noreferrer">{item.url}</a> : <span>{item.url ? 'Unavailable: invalid web address' : 'Not added'}</span>}</DetailRow>
                 <DetailRow label="Content type">{humanize(item.contentType)}</DetailRow>
@@ -662,21 +683,35 @@ function ItemDetail({ item, data }: { item: SavedItem; data: LibraryData }) {
                 <DetailRow label="Added to Siftory">{new Date(item.createdAt).toLocaleDateString()}</DetailRow>
                 {item.sourceFileId && <DetailRow label="Original file">{sourceFileLookupId !== item.sourceFileId ? 'Loading local file…' : sourceFile?.savedItemId === item.sourceFileId ? <button className="text-link-button" type="button" onClick={downloadSourceFile}>Download {sourceFile.fileName} ({Math.ceil(sourceFile.size / 1024)} KB)</button> : 'The original local file is unavailable.'}</DetailRow>}
               </dl>
-            </section>
+            </DetailCard>
             {!hasTranscriptView && item.sourceType !== 'text' && <ProcessingPanel item={item} data={data} />}
-            {item.description && <section className="detail-panel"><h2>Description or caption</h2><p>{item.description}</p></section>}
-            <section className="detail-panel"><h2>Your notes</h2><p className="detail-notes">{item.userNotes || 'No notes yet.'}</p></section>
-            <button className="quiet-button danger-button item-remove" type="button" onClick={() => void remove()}>Remove from library</button>
+            {item.description && <DetailCard title="Description or caption"><p className="detail-copy">{item.description}</p></DetailCard>}
+            <DetailCard title="Your notes"><p className="detail-copy">{item.userNotes || 'No notes yet.'}</p></DetailCard>
           </div>
-          <aside className="detail-aside" aria-label="Organize item">
-            <RelationPicker title="Collections" items={data.collections} selected={item.collectionIds} onToggle={(id, checked) => toggleRelation('collectionIds', id, checked)} />
-            <RelationPicker title="Categories" items={data.categories} selected={item.categoryIds} onToggle={(id, checked) => toggleRelation('categoryIds', id, checked)} />
-            <RelationPicker title="Tags" items={data.tags} selected={item.tagIds} onToggle={(id, checked) => toggleRelation('tagIds', id, checked)} />
+          <aside className="min-w-0" aria-label="Organize item">
+            <DetailCard title="Organization">
+              <div className="divide-y">
+                <RelationPicker title="Collections" items={data.collections} selected={item.collectionIds} onToggle={(id, checked) => toggleRelation('collectionIds', id, checked)} />
+                <RelationPicker title="Categories" items={data.categories} selected={item.categoryIds} onToggle={(id, checked) => toggleRelation('categoryIds', id, checked)} />
+                <RelationPicker title="Tags" items={data.tags} selected={item.tagIds} onToggle={(id, checked) => toggleRelation('tagIds', id, checked)} />
+              </div>
+            </DetailCard>
           </aside>
+          <Button className="item-remove text-destructive hover:text-destructive" variant="ghost" type="button" onClick={() => void remove()}><Trash2 aria-hidden="true" />Remove from library</Button>
         </div>
       </div>
     </section>
   )
+}
+
+function DetailCard({ title, children }: { title: string; children: ReactNode }) {
+  const id = useId()
+  return <Card role="region" aria-labelledby={id} className="min-w-0 gap-0 py-0">
+    <CardHeader className="px-4 py-3 sm:px-5">
+      <h2 id={id} className="text-sm font-semibold">{title}</h2>
+    </CardHeader>
+    <CardContent className="border-t px-4 py-2 sm:px-5">{children}</CardContent>
+  </Card>
 }
 
 function RelationPicker<T extends { id: string; name: string }>({ title, items, selected, onToggle }: {
@@ -685,10 +720,18 @@ function RelationPicker<T extends { id: string; name: string }>({ title, items, 
   selected: string[]
   onToggle: (id: string, checked: boolean) => void
 }) {
+  const groupId = useId()
   return (
-    <fieldset className="relation-picker"><legend>{title}</legend>
-      {items.length ? items.map(({ id, name }) => <label key={id}><input type="checkbox" checked={selected.includes(id)} onChange={(event) => onToggle(id, event.target.checked)} /><span>{name}</span></label>) : <p>No {title.toLocaleLowerCase()} created yet.</p>}
-    </fieldset>
+    <div className="py-2" role="group" aria-labelledby={groupId}>
+      <h3 id={groupId} className="mb-1 text-sm font-medium">{title}</h3>
+      {items.length ? items.map(({ id, name }, index) => {
+        const checkboxId = `${groupId}-${index}`
+        return <Label key={id} htmlFor={checkboxId} className="min-h-control gap-2 font-normal">
+          <Checkbox id={checkboxId} checked={selected.includes(id)} onCheckedChange={(checked) => onToggle(id, checked === true)} />
+          <span className="min-w-0">{name}</span>
+        </Label>
+      }) : <p className="text-sm text-muted-foreground">No {title.toLocaleLowerCase()} created yet.</p>}
+    </div>
   )
 }
 

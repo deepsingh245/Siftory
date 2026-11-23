@@ -1,0 +1,73 @@
+:is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content']) {
+  --menu-offset-x: 0px;
+  --menu-offset-y: -4px;
+}
+
+:is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'])[data-side='top'] {
+  --menu-offset-y: 4px;
+}
+
+:is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'])[data-side='left'] {
+  --menu-offset-x: 4px;
+  --menu-offset-y: 0px;
+}
+
+:is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'])[data-side='right'] {
+  --menu-offset-x: -4px;
+  --menu-offset-y: 0px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'])[data-state='open'] {
+    animation: menu-in var(--motion-enter) var(--motion-ease) both;
+  }
+
+  :is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='select-content'])[data-state='closed'] {
+    animation: menu-out var(--motion-exit) var(--motion-ease) both;
+  }
+}
+
+.disclosure-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+}
+
+.disclosure-content[data-state='open'] > .disclosure-grid {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.disclosure-body {
+  min-height: 0;
+  overflow: clip;
+  overflow-clip-margin: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .disclosure-grid {
+    transition: grid-template-rows var(--motion-exit) var(--motion-ease), visibility 0s linear var(--motion-exit);
+  }
+
+  .disclosure-content[data-state='open'] > .disclosure-grid {
+    transition: grid-template-rows var(--motion-enter) var(--motion-ease), visibility 0s;
+  }
+}
+
+[data-slot='control-chevron'] {
+  transition: rotate var(--motion-enter) var(--motion-ease);
+}
+
+[aria-expanded='true'] > [data-slot='control-chevron'] {
+  rotate: 180deg;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translate(var(--menu-offset-x), var(--menu-offset-y)) scale(.98); }
+  to { opacity: 1; transform: translate(0) scale(1); }
+}
+
+@keyframes menu-out {
+  from { opacity: 1; transform: translate(0) scale(1); }
+  to { opacity: 0; transform: translate(var(--menu-offset-x), var(--menu-offset-y)) scale(.98); }
+}

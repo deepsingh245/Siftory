@@ -30,7 +30,8 @@ This repository contains the Siftory shell, local library, Instagram/bookmark/UR
 
 - Library, import, search, and organisation should remain useful without AI.
 - Keep source provenance visible and AI classifications editable.
-- Follow `docs/DESIGN_SYSTEM.md` and `docs/UI_UX.md`: dark-first with a complete light theme, graphite/sage/amber palette, calm editorial hierarchy, responsive layouts, accessible controls, and restrained motion.
+- Follow `docs/DESIGN_SYSTEM.md` and `docs/UI_UX.md` for the shared shadcn palette, dark and light modes, responsive layouts, accessible controls, and restrained motion.
+- Use shadcn for new or updated UI controls. Use `DropdownMenu` for action menus, `Select` for form choices, and the equivalents in `src/components/ui` for other controls. Use semantic HTML for document structure and browser-specific controls such as file inputs and audio playback.
 - Do not add placeholder controls that appear functional.
 - Distinguish confirmed decisions, proposals, and open questions as recorded in `docs/DECISIONS.md`.
 

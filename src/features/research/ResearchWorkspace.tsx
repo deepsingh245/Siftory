@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Disclosure } from '@/components/ui/disclosure'
+import { FieldSelect } from '@/components/ui/field-select'
 import { maxResearchQuestionLength, maxResearchSources } from '../../domain/research'
 import type { ResearchCitation, ResearchReview, ResearchSession } from '../../domain/research'
 import type { SavedItem } from '../../domain/library'
@@ -119,13 +121,14 @@ export function ResearchWorkspace({ sessionId, data }: { sessionId?: string; dat
             const disabled = !selected && selectedIds.length >= maxResearchSources
             return <li key={source.id}>
               <label className="research-source-toggle"><input type="checkbox" checked={selected} disabled={disabled || busy} onChange={(event) => toggleSource(source.id, event.target.checked)} /><span><strong>{source.title || 'Untitled source'}</strong><small>{sourceKindLabel(source.kind)} · {source.excerpt.length.toLocaleString()} characters</small></span></label>
-              <details><summary>Review exact excerpt</summary><pre className="analysis-source">{source.excerpt}</pre></details>
+              <Disclosure className="research-excerpt" label="Review exact excerpt"><pre className="analysis-source">{source.excerpt}</pre></Disclosure>
             </li>
           })}</ul>
           {selectedIds.length > 0 && <p className="research-coverage">Selected context: {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} · {selectedTotal.toLocaleString()} / 10,000 source characters · 1 request</p>}
           {connection?.state === 'connected' ? <>
           {connection.email && <p className="processing-boundary-note">Connected as {connection.email}. After you confirm, OpenAI receives the question, selected source titles and types, excerpts, and citation references. Saved item IDs and user notes stay on this device.</p>}
-          <label className="form-field"><span>ChatGPT model</span><select value={selectedModel} disabled={busy || consent} onChange={(event) => changeModel(event.target.value)}>{connection.models.map((entry) => <option key={entry.slug} value={entry.slug}>{entry.label}</option>)}</select></label>
+          <FieldSelect label="ChatGPT model" value={selectedModel} disabled={busy || consent} onValueChange={changeModel}
+            options={connection.models.map(({ slug, label }) => [slug, label])} />
             <label className="analysis-consent"><input type="checkbox" checked={consent} disabled={busy || !selectedIds.length || data.analysisRunning || selectedTotal > 10_000} onChange={(event) => { setConsent(event.target.checked); setReviewConnectionId(event.target.checked ? connection.connectionId : '') }} /><span>Send the question, selected source titles and types, excerpts, and citation references to OpenAI using {selectedModel} in 1 request. This may use ChatGPT plan allowance or enabled credits.</span></label>
             <button className="primary-button" type="submit" disabled={!consent || busy || data.analysisRunning || connection.connectionId !== reviewConnectionId}>{busy ? 'Researching…' : 'Confirm and research'}</button>
             {connection.connectionId !== reviewConnectionId && consent && <p role="alert" className="library-error">The ChatGPT connection changed. Review the sources again before continuing.</p>}
@@ -154,7 +157,7 @@ function ResearchSessionView({ session, items, onDelete, busy }: { session: Rese
     {session.answer.limitations.length > 0 && <section><h3>Limits and conflicts</h3><ul>{session.answer.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul></section>}
     <section><h3>Sources included</h3><ul className="research-session-sources">{session.sources.map((source) => <li key={source.id}>
       <strong>{source.title}</strong> · {sourceKindLabel(source.kind)}
-      {source.status === 'deleted' ? <p className="research-source-status">Source deleted; its saved excerpt was removed.</p> : <><p className="research-source-status">{source.status === 'changed' ? 'Source changed since this session; saved quotes are historical.' : 'Source matches the saved version used for this answer.'}</p><details><summary>View reviewed excerpt</summary><pre className="analysis-source">{source.excerpt}</pre></details></>}
+      {source.status === 'deleted' ? <p className="research-source-status">Source deleted; its saved excerpt was removed.</p> : <><p className="research-source-status">{source.status === 'changed' ? 'Source changed since this session; saved quotes are historical.' : 'Source matches the saved version used for this answer.'}</p><Disclosure className="research-excerpt" label="View reviewed excerpt"><pre className="analysis-source">{source.excerpt}</pre></Disclosure></>}
     </li>)}</ul></section>
   </article>
 }

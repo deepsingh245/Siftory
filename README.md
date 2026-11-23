@@ -18,6 +18,12 @@ npm run lint
 npm test
 ```
 
+## Dashboard theme
+
+The dashboard adapts the free [shadcn dashboard block](https://ui.shadcn.com/blocks/dashboard). Edit the light palette under `:root` and the dark palette under `.dark` in [src/styles/theme.css](src/styles/theme.css). For example, change `--primary` and `--primary-foreground` together for primary actions, or change `--chart-1` for the activity series. The sidebar and existing screens use the same palette.
+
+Run `npm run build` then `npm run test:browser` to check the dashboard in an isolated Puppeteer session. The test uses installed Chrome. Set `SIFTORY_CHROME_PATH` for a nonstandard installation. The screenshots are saved to `test-results/shadcn/`.
+
 ## Local storage and ChatGPT
 
 In the browser and address where the existing seven imports are visible, open **Settings → Local storage → Move seven imports to SQLite**. Siftory identifies the items from the local `data.json`, writes and verifies a private backup under `.siftory/backups/`, then checks the migrated data before using SQLite. Keep the original browser library and the backup for recovery. Settings shows the database size, attachments, referenced audio, and reusable pages.

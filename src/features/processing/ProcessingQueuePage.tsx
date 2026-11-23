@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Disclosure } from '@/components/ui/disclosure'
 import type { ProcessingJob } from '../../domain/processing'
 import { displayTitle } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
@@ -104,9 +105,9 @@ function ProcessingJobCard({ job, data }: { job: ProcessingJob; data: LibraryDat
         {job.status === 'skipped' && item && <button className="quiet-button" type="button" disabled={busy} onClick={() => void perform(() => data.actions.retryProcessing(job.id))}>Add to queue again</button>}
         {job.status === 'completed' && item && <a className="quiet-button" href={`#/item/${encodeURIComponent(item.id)}`}>View extracted text</a>}
       </div>
-      <details className="processing-history"><summary>History ({job.events.length} events)</summary>
+      <Disclosure className="processing-history" label={`History (${job.events.length} events)`}>
         <ol>{job.events.slice().reverse().map((event, index) => <li key={`${event.at}-${event.type}-${index}`}><strong>{statusLabel(event.type)}</strong><time dateTime={event.at}>{new Date(event.at).toLocaleString()}</time>{event.message && <span>{event.message}</span>}</li>)}</ol>
-      </details>
+      </Disclosure>
     </article>
   )
 }

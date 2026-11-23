@@ -1,4 +1,6 @@
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { createChatGptMiddleware } from './server/chatgpt-middleware.mjs'
 import { createMediaMiddleware } from './server/media-middleware.mjs'
@@ -15,7 +17,8 @@ const privateFiles = [
 export default defineConfig({
   server: { host: 'localhost', strictPort: true, fs: { deny: privateFiles } },
   preview: { host: 'localhost', strictPort: true },
-  plugins: [react(), {
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  plugins: [react(), tailwindcss(), {
     name: 'siftory-local-ai',
     configureServer(server) {
       const scheme = server.config.server.https ? 'https' : 'http'

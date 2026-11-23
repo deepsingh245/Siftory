@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Disclosure } from '@/components/ui/disclosure'
 import type { AnalysisDiagnostic, AnalysisJob } from '../../domain/analysisQueue'
 import { displayTitle } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
@@ -12,10 +13,9 @@ function ErrorDetails({ diagnostic }: { diagnostic: AnalysisDiagnostic }) {
     ['Transcript step', diagnostic.step], ['HTTP status', diagnostic.status], ['Request ID', diagnostic.requestId],
     ['OpenAI status', diagnostic.providerStatus], ['OpenAI request ID', diagnostic.providerRequestId],
   ] as const
-  return <details className="analysis-error-details">
-    <summary>Error details</summary>
+  return <Disclosure className="analysis-error-details" label="Error details">
     <dl>{fields.map(([label, value]) => value !== undefined && <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-  </details>
+  </Disclosure>
 }
 
 export function AnalysisQueuePanel({ data }: { data: LibraryData }) {

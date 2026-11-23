@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from 'react'
+import { Disclosure } from '@/components/ui/disclosure'
+import { FieldSelect } from '@/components/ui/field-select'
 import type { AnalysisJob, AnalysisReview } from '../../domain/analysisQueue'
 import type { LibraryData } from '../library/useLibraryData'
 import { chatgpt } from './chatgptClient'
@@ -77,14 +79,22 @@ export function AnalysisBatchReview({ itemIds, queuedJobs, data, onClose, inline
     {connection && !connected && <p className="processing-capability-reason"><a href="#/settings">Connect ChatGPT</a> to run analysis.</p>}
     {connected && <p className="analysis-connection">ChatGPT connected{connected.email ? ` · ${connected.email}` : ''}</p>}
     {connected && readyToReview && <>
-      {!queuedJobs && <label className="form-field"><span>ChatGPT model</span><select value={selectedModel} disabled={busy || Boolean(review)} onChange={(event) => { setModel(event.target.value); setReview(undefined); setConsent(false) }}>{connected.models.map((entry) => <option key={entry.slug} value={entry.slug}>{entry.label}</option>)}</select></label>}
+      {!queuedJobs && <FieldSelect label="ChatGPT model" value={selectedModel} disabled={busy || Boolean(review)} onValueChange={(value) => {
+        setModel(value)
+        setReview(undefined)
+        setConsent(false)
+      }} options={connected.models.map(({ slug, label }) => [slug, label])} />}
       {!review && <button className="primary-button" type="button" disabled={busy || !selectedModel || data.analysisRunning} onClick={() => void prepare()}>{busy ? 'Preparing review…' : inline ? 'Review text for analysis' : `Review ${queuedJobs ? Math.min(queuedJobs.length, 25) : itemIds.length} item${(queuedJobs ? queuedJobs.length : itemIds.length) === 1 ? '' : 's'}`}</button>}
     </>}
     {review && <>
       <div className="analysis-review-summary" aria-live="polite"><span>{ready} ready</span><span>{review.items.filter((entry) => entry.state === 'cached').length} already analyzed</span><span>{review.items.filter((entry) => entry.state === 'unavailable').length} unavailable</span><span>{review.items.filter((entry) => entry.state === 'changed').length} changed since queued</span></div>
       <ol className="analysis-review-list">{review.items.map((entry) => <li key={entry.itemId}>
         <strong>{entry.title}</strong><span className={`processing-badge processing-badge--${entry.state}`}>{entry.state === 'ready' ? 'Ready' : entry.state === 'cached' ? 'Already analyzed' : entry.state === 'changed' ? 'Text changed' : 'No usable text'}</span>
-        {entry.input && <details open={inline || undefined}><summary>Exact text to send ({entry.input.kind === 'caption' ? 'caption' : entry.input.kind === 'transcript' ? 'transcript' : 'extracted text'})</summary><pre className="analysis-source">{entry.input.text}</pre>{entry.input.truncated && <p>Only the first {entry.input.text.length.toLocaleString()} characters will be analyzed.</p>}{entry.input.kind === 'transcript' && entry.state === 'ready' && <p>{entry.requestCount} request{entry.requestCount === 1 ? '' : 's'} remain. Completed steps are saved locally for retries.</p>}</details>}
+        {entry.input && <Disclosure className="analysis-review-source" defaultOpen={inline} label={`Exact text to send (${entry.input.kind === 'caption' ? 'caption' : entry.input.kind === 'transcript' ? 'transcript' : 'extracted text'})`}>
+          <pre className="analysis-source">{entry.input.text}</pre>
+          {entry.input.truncated && <p>Only the first {entry.input.text.length.toLocaleString()} characters will be analyzed.</p>}
+          {entry.input.kind === 'transcript' && entry.state === 'ready' && <p>{entry.requestCount} request{entry.requestCount === 1 ? '' : 's'} remain. Completed steps are saved locally for retries.</p>}
+        </Disclosure>}
       </li>)}</ol>
       {ready > 0 && <>
         {!queuedJobs && <button className="quiet-button" type="button" disabled={busy} onClick={() => void queue()}>Add reviewed items to queue</button>}

@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Disclosure } from '@/components/ui/disclosure'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import type { ExtractedContent, ProcessingCapability } from '../../domain/processing'
 import type { SavedItem } from '../../domain/library'
 import type { LibraryData } from '../library/useLibraryData'
@@ -113,38 +116,53 @@ export function ProcessingPanel({ item, data }: { item: SavedItem; data: Library
         {content.text.length > previewLimit && <p>Showing the first {previewLimit.toLocaleString()} characters. Download the file to read the full text.</p>}
       </div>}
 
-      {job?.events.length ? <details className="processing-history"><summary>Job history ({job.events.length} events)</summary><ol>{job.events.slice(-8).reverse().map((event, index) => <li key={`${event.at}-${event.type}-${index}`}><strong>{eventLabel(event.type)}</strong><time dateTime={event.at}>{new Date(event.at).toLocaleString()}</time>{event.message && <span>{event.message}</span>}</li>)}</ol></details> : null}
+      {job?.events.length ? <Disclosure className="processing-history" label={`Job history (${job.events.length} events)`}>
+        <ol>{job.events.slice(-8).reverse().map((event, index) => <li key={`${event.at}-${event.type}-${index}`}><strong>{eventLabel(event.type)}</strong><time dateTime={event.at}>{new Date(event.at).toLocaleString()}</time>{event.message && <span>{event.message}</span>}</li>)}</ol>
+      </Disclosure> : null}
     </section>
   )
 }
 
-export function ProcessingCardAction({ item, data }: { item: SavedItem; data: LibraryData }) {
+export function ProcessingCardAction({ item, data, onMenuError }: {
+  item: SavedItem
+  data: LibraryData
+  onMenuError?: (message: string | undefined) => void
+}) {
   const [error, setError] = useState<string>()
   if (item.sourceType !== 'text' || item.contentType !== 'text' || !item.sourceFileId) return null
 
   const job = data.jobs
     .filter((candidate) => candidate.savedItemId === item.id && candidate.processingVersion === 'local-text-v1')
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
+  const canRetry = job && ['failed', 'needs-attention', 'skipped'].includes(job.status)
 
   async function queue() {
-    setError(undefined)
+    const reportError = onMenuError ?? setError
+    reportError(undefined)
     try {
-      if (job && ['failed', 'needs-attention', 'skipped'].includes(job.status)) {
+      if (canRetry) {
         await data.actions.retryProcessing(job.id)
       } else {
         await data.actions.queueProcessing(item.id)
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'This text file could not be queued.')
+      reportError(cause instanceof Error ? cause.message : 'This text file could not be queued.')
     }
   }
 
-  if (job?.status === 'completed') return <a className="processing-card-status" href="#/queue">Text extracted · View queue</a>
-  if (job?.status === 'queued') return <a className="processing-card-status" href="#/queue">Waiting in queue</a>
+  const queueStatus = job?.status === 'completed' ? 'Text extracted · View queue' : job?.status === 'queued' ? 'Waiting in queue' : undefined
+  const queueLabel = canRetry ? 'Retry text extraction' : 'Queue text extraction'
+  if (onMenuError) {
+    if (queueStatus) return <DropdownMenuItem asChild className="min-h-9"><a href="#/queue">{queueStatus}</a></DropdownMenuItem>
+    if (job?.status === 'extracting') return <DropdownMenuItem disabled className="min-h-9">Extracting text…</DropdownMenuItem>
+    return <DropdownMenuItem className="min-h-9" onSelect={() => void queue()}>{queueLabel}</DropdownMenuItem>
+  }
+
+  if (queueStatus) return <a className="processing-card-status" href="#/queue">{queueStatus}</a>
   if (job?.status === 'extracting') return <span className="processing-card-status" role="status">Extracting text…</span>
 
   return <span className="processing-card-action">
-    <button className="quiet-button" type="button" onClick={() => void queue()}>{job?.status === 'failed' || job?.status === 'needs-attention' || job?.status === 'skipped' ? 'Retry text extraction' : 'Queue text extraction'}</button>
+    <Button variant="outline" type="button" onClick={() => void queue()}>{queueLabel}</Button>
     {error && <span className="processing-card-error" role="alert">{error}</span>}
   </span>
 }

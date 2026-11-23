@@ -6,6 +6,10 @@ Use the labels **Confirmed**, **Proposed**, **Open** and **Superseded**. Add dat
 
 | Decision | Status | Rationale |
 |---|---|---|
+| Adopt shadcn/ui and the free `dashboard-01` block | Confirmed | Keep Vite and existing item workflows. Use a shared light and dark palette in `src/styles/theme.css` and shadcn components for new or updated controls. Populate the dashboard from the local library. |
+
+| Decision | Status | Rationale |
+|---|---|---|
 | Use Node SQLite for the local library after verified migration | Confirmed (2026-11-22) | The Vite server opens a single file on disk. Preserve the browser source and private backup, migrate exactly the seven selected imports, and keep attachment and audio bytes outside SQLite. |
 | Persist ChatGPT grants in Windows DPAPI | Confirmed (2026-11-22) | An origin-bound, persistent HttpOnly cookie identifies the local session. OAuth credentials stay in the Windows-protected record. Rotate on supported OpenAI refresh and keep per-request consent. Supersedes the session-only Phase 5 decision. |
 | Offer reviewed app listing lookup alongside analysis | Confirmed (2026-11-23) | Check selected evidence-based names or store listing IDs using Apple's public catalog and direct Google Play listing pages. Keep possible name matches separate from quoted source URLs. |

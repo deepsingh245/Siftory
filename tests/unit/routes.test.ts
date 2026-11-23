@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { parseRoute, routeHref } from '../../src/app/routes'
 
 describe('hash routes', () => {
+  it('opens Dashboard by default while retaining the library route', () => {
+    expect(parseRoute('')).toEqual({ page: 'dashboard' })
+    expect(parseRoute('#/dashboard')).toEqual({ page: 'dashboard' })
+    expect(parseRoute('#/library')).toEqual({ page: 'library' })
+  })
+
   it('creates and parses an item route with a URL-safe identifier', () => {
     const href = routeHref({ page: 'item', id: 'item / 1' })
     expect(href).toBe('#/item/item%20%2F%201')

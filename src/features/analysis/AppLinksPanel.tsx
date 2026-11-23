@@ -1,4 +1,10 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { Link2, Search } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Disclosure } from '@/components/ui/disclosure'
+import { Label } from '@/components/ui/label'
 import type { Analysis } from '../../domain/analysis'
 import { appLookupTargets } from '../../domain/appLinks'
 import type { AppLookupResult, AppLookupTarget } from '../../domain/appLinks'
@@ -14,6 +20,7 @@ function targetLabel({ kind, value }: AppLookupTarget) {
 }
 
 export function AppLinksPanel({ analysis }: { analysis: Analysis }) {
+  const id = useId()
   const targets = appLookupTargets(analysis)
   const [unselected, setUnselected] = useState<string[]>([])
   const [results, setResults] = useState<AppLookupResult[]>()
@@ -50,35 +57,39 @@ export function AppLinksPanel({ analysis }: { analysis: Analysis }) {
     }
   }
 
-  return <section className="app-links-panel" aria-label="App links" aria-busy={busy}>
-    <h3>App links</h3>
-    <ul className="app-link-targets" aria-label="First names and listings found">
-      {targets.slice(0, 3).map((target) => <li key={keyFor(target)}>{targetLabel(target)}</li>)}
-      {targets.length > 3 && <li>+{targets.length - 3} more</li>}
-    </ul>
-    <details>
-      <summary>Find official app links</summary>
-      <p>Only the selected names and listing IDs are sent to Apple or Google Play. Store region: {country}.</p>
-      <fieldset>
-        <legend>Names and listing IDs to check</legend>
-        {targets.map((target) => {
-          const key = keyFor(target)
-          return <label key={key}>
-            <input type="checkbox" disabled={busy} checked={!unselected.includes(key)} onChange={(event) => {
-              const checked = event.target.checked
-              setUnselected((previous) => checked ? previous.filter((entry) => entry !== key) : [...previous, key])
-            }} />
-            {targetLabel(target)}
-          </label>
-        })}
-      </fieldset>
-      <button className="quiet-button" type="button" disabled={busy || !selected.length} onClick={() => void checkStores()}>
-        {busy ? 'Checking stores…' : 'Find app links'}
-      </button>
-    </details>
+  return <section className="app-links-panel" aria-labelledby={`${id}-heading`} aria-busy={busy}>
+    <h3 id={`${id}-heading`} className="flex items-center gap-2">
+      <Link2 className="size-4 text-muted-foreground" aria-hidden="true" /> App links
+    </h3>
+    <Disclosure className="mt-3 rounded-lg border bg-card p-2"
+      label={<>Find official app links <Badge variant="secondary" className="ms-1">{targets.length}</Badge></>}
+      triggerClassName="w-full justify-between">
+      <div className="space-y-3 px-2 pt-2 pb-1">
+        <p className="max-w-prose text-sm text-muted-foreground">Only your selections are sent to the App Store or Google Play. Store region <strong className="font-medium text-foreground">{country}</strong>.</p>
+        <fieldset className="min-w-0 space-y-1">
+          <legend className="mb-1 text-sm font-medium">Names and listing IDs to check</legend>
+          {targets.map((target, index) => {
+            const key = keyFor(target)
+            const checkboxId = `${id}-choice-${index}`
+            return <Label key={key} htmlFor={checkboxId} className="min-h-10 cursor-pointer gap-2.5 rounded-md px-2 py-2 leading-snug hover:bg-accent">
+              <Checkbox id={checkboxId} disabled={busy} checked={!unselected.includes(key)} onCheckedChange={(checked) => {
+                setUnselected((previous) => checked ? previous.filter((entry) => entry !== key) : [...previous, key])
+              }} />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{targetLabel(target)}</span>
+            </Label>
+          })}
+        </fieldset>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-3">
+          <Button type="button" disabled={busy || !selected.length} onClick={() => void checkStores()}>
+            <Search aria-hidden="true" /> {busy ? 'Checking stores…' : 'Find app links'}
+          </Button>
+          <span className="text-sm text-muted-foreground">{selected.length} selected</span>
+        </div>
+      </div>
+    </Disclosure>
     {busy && <p role="status">Checking app listings…</p>}
     {error && <p className="library-error" role="alert">{error}</p>}
-    {results && <ul className="app-link-results">{results.map(({ target, state, listings }) => <li key={keyFor(target)}>
+    {results && <ul className="mt-3 divide-y text-sm">{results.map(({ target, state, listings }) => <li className="space-y-1 py-3 [overflow-wrap:anywhere]" key={keyFor(target)}>
       <strong>{targetLabel(target)}</strong>
       {state === 'unavailable' && <p>The store could not be checked. Try again later.</p>}
       {state === 'unconfirmed' && <p>No matching listing was confirmed for this region.</p>}

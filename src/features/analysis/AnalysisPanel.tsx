@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Disclosure } from '@/components/ui/disclosure'
 import { analysisFingerprint, analysisVersion, prepareAnalysisInput } from '../../domain/analysis'
 import type { Analysis } from '../../domain/analysis'
 import type { SavedItem } from '../../domain/library'
@@ -54,7 +57,7 @@ export function AnalysisPanel({ item, data, onTranscriptCue }: { item: SavedItem
     {needsAttention && latestJob?.message && <p className="library-error" role="status">{latestJob.message}</p>}
     {visibleResult ? <>
       <ResultView key={visibleResult.id} analysis={visibleResult} data={data} item={item} onTranscriptCue={onTranscriptCue} />
-      <details className="analysis-repeat"><summary>Run another analysis</summary>{review}</details>
+      <Disclosure className="analysis-repeat" label="Run another analysis">{review}</Disclosure>
     </> : review}
   </section>
 }
@@ -84,17 +87,16 @@ function ResultView({ analysis, data, item, onTranscriptCue }: { analysis: Analy
         <h3 id="source-links-heading">Links in the source</h3>
         <ul>{analysis.links.map((link) => <li key={link}><a href={link} target="_blank" rel="noreferrer">{link}</a></li>)}</ul>
       </section>}
-      {result.mentions.length > 0 && <details className="analysis-more">
-        <summary>Mentions <span>{result.mentions.length}</span></summary>
+      {result.mentions.length > 0 && <Disclosure className="analysis-more" label={<>Mentions <Badge variant="secondary">{result.mentions.length}</Badge></>}>
         <ul className="analysis-mentions">{result.mentions.map((mention, index) => <li key={index}>
           <span>{mention.text}</span>
           {(mention.evidence.trim().toLowerCase() !== mention.text.trim().toLowerCase() || mention.timestampMs !== undefined)
             && <Evidence note={mention} item={item} onTranscriptCue={jump} />}
         </li>)}</ul>
-      </details>}
-      {result.categories.length > 0 && <details className="analysis-more"><summary>Suggested categories <span>{result.categories.length}</span></summary>
+      </Disclosure>}
+      {result.categories.length > 0 && <Disclosure className="analysis-more" label={<>Suggested categories <Badge variant="secondary">{result.categories.length}</Badge></>}>
         {result.categories.map((category, index) => <CategorySuggestion key={index} name={category.text} evidence={category.evidence} apply={(name) => data.actions.applySuggestedCategory(analysis.savedItemId, name)} />)}
-      </details>}
+      </Disclosure>}
     </aside>}
   </div>
 }
@@ -108,12 +110,12 @@ function Evidence({ note, item, onTranscriptCue }: { note: { evidence: string; t
     catch { /* Invalid stored URLs are not made clickable. */ }
   }
   return <div className="analysis-evidence">
-    <details><summary>Source quote</summary><blockquote>{evidence}</blockquote>
+    <Disclosure className="analysis-quote" label="Source quote"><blockquote>{evidence}</blockquote>
       {timestampUrl && hasTime && <a href={timestampUrl} target="_blank" rel="noreferrer">Open video at {formatTimestamp(timestampMs)}</a>}
-    </details>
-    {hasTime && onTranscriptCue && <button type="button" className="analysis-cue-link" onClick={() => onTranscriptCue({ time: timestampMs, quote: evidence })}>
+    </Disclosure>
+    {hasTime && onTranscriptCue && <Button type="button" variant="link" onClick={() => onTranscriptCue({ time: timestampMs, quote: evidence })}>
       Transcript at {formatTimestamp(timestampMs)}
-    </button>}
+    </Button>}
   </div>
 }
 
@@ -136,7 +138,7 @@ function CategorySuggestion({ name, evidence, apply }: { name: string; evidence:
   return <form className="analysis-category" onSubmit={(event) => void add(event)}>
     <label className="form-field"><span className="visually-hidden">Category name for {name}</span><input value={value} onChange={(event) => { setValue(event.target.value); setStatus(''); setError('') }} maxLength={80} required /></label>
     <button type="submit" className="quiet-button" disabled={busy || !value.trim() || Boolean(status)}>{status ? 'Added' : 'Add category'}</button>
-    <details className="category-evidence"><summary>Source quote</summary><blockquote>{evidence}</blockquote></details>
+    <Disclosure className="category-evidence" label="Source quote"><blockquote>{evidence}</blockquote></Disclosure>
     {status && <p role="status">{status}</p>}{error && <p role="alert" className="library-error">{error}</p>}
   </form>
 }

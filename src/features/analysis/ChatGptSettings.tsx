@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { chatgpt } from './chatgptClient'
 import type { ChatGptStatus } from './chatgptClient'
 
@@ -50,27 +53,38 @@ export function ChatGptSettings() {
   }
 
   return (
-    <section className="library-page" aria-labelledby="settings-heading">
-      <div className="library-page-heading">
-        <div><h1 id="settings-heading">Settings</h1><p className="library-page-description">Connect your ChatGPT plan for saved item analysis.</p></div>
-      </div>
-      <section className="processing-panel" aria-labelledby="chatgpt-heading">
-        <h2 id="chatgpt-heading">ChatGPT connection</h2>
-        <p className="processing-boundary-note">Use your ChatGPT plan to analyze selected text. Siftory asks before sending text to OpenAI. On Windows, a renewable connection can reopen in this browser after a restart.</p>
-        <p role="status" className="processing-capability-reason">
-          {status?.state === 'connected' ? `Connected${status.email ? ` as ${status.email}` : ''}. ${status.models.length} models available.`
-            : pending ? 'Waiting for ChatGPT sign-in. Return here when it finishes.'
-              : status?.message ?? (status ? 'Disconnected' : error ? '' : 'Checking connection…')}
-        </p>
-        {status?.state === 'connected' && status.message && <p role="status">{status.message}</p>}
-        {error && <p className="library-error" role="alert">{error}</p>}
-        <div className="processing-actions">
-          {pending && authorizationUrl && <a href={authorizationUrl} className="primary-button" target="_blank" rel="noreferrer" data-oai-siwc-button>Continue with ChatGPT (opens in a new tab)</a>}
-          {pending && <button type="button" className="quiet-button" disabled={busy} onClick={() => void changeConnection(false)}>Cancel sign-in</button>}
-          {status?.state === 'connected' && <button type="button" className="quiet-button" disabled={busy} onClick={() => void changeConnection(false)}>Disconnect ChatGPT</button>}
-          {(status?.state === 'disconnected' || status?.state === 'error') && <button type="button" className="primary-button" disabled={busy} onClick={() => void changeConnection(true)}>{busy ? 'Preparing sign-in…' : 'Connect ChatGPT'}</button>}
+    <Card role="region" aria-labelledby="chatgpt-heading" aria-busy={busy} className="min-w-0 gap-4 py-4">
+      <CardHeader className="gap-2 px-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="chatgpt-heading" className="text-base font-semibold">ChatGPT connection</h2>
+          <Badge role="status" variant="outline" className={status?.state === 'connected' ? 'text-success' : 'text-muted-foreground'}>
+            {status?.state === 'connected' ? 'Connected' : pending ? 'Sign-in pending' : status?.state === 'disconnected' ? 'Disconnected'
+              : error || status?.state === 'error' ? 'Unavailable' : 'Checking…'}
+          </Badge>
         </div>
-      </section>
-    </section>
+        <p className="text-sm text-muted-foreground">Use your ChatGPT plan to analyze selected text. Siftory asks before sending text to OpenAI.</p>
+      </CardHeader>
+      <CardContent className="space-y-3 px-4 text-sm sm:px-5">
+        {status?.state === 'connected' && <dl className="divide-y border-y">
+          {status.email && <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2">
+            <dt className="text-muted-foreground">Account</dt>
+            <dd className="min-w-0 font-medium [overflow-wrap:anywhere]">{status.email}</dd>
+          </div>}
+          <div className="flex items-center justify-between gap-4 py-2"><dt className="text-muted-foreground">Models available</dt><dd className="font-medium tabular-nums">{status.models.length}</dd></div>
+        </dl>}
+        {pending && <p role="status" className="text-muted-foreground">Waiting for ChatGPT sign-in. Return here when it finishes.</p>}
+        {status?.message && <p role="status" className="text-muted-foreground">{status.message}</p>}
+        {error && <p className="text-destructive" role="alert">{error}</p>}
+        <p className="text-muted-foreground">On Windows, a renewable connection can reopen in this browser after a restart.</p>
+      </CardContent>
+      {(pending || status) && <CardFooter className="flex-wrap gap-2 px-4 sm:px-5">
+        {pending && authorizationUrl && <Button asChild className="h-auto min-h-control whitespace-normal">
+          <a href={authorizationUrl} target="_blank" rel="noreferrer" data-oai-siwc-button>Continue with ChatGPT (opens in a new tab)</a>
+        </Button>}
+        {pending && <Button type="button" variant="outline" disabled={busy} onClick={() => void changeConnection(false)}>Cancel sign-in</Button>}
+        {status?.state === 'connected' && <Button type="button" variant="outline" disabled={busy} onClick={() => void changeConnection(false)}>Disconnect ChatGPT</Button>}
+        {(status?.state === 'disconnected' || status?.state === 'error') && <Button type="button" disabled={busy} onClick={() => void changeConnection(true)}>{busy ? 'Preparing sign-in…' : 'Connect ChatGPT'}</Button>}
+      </CardFooter>}
+    </Card>
   )
 }

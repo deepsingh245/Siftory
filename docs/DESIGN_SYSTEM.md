@@ -14,48 +14,34 @@ The interface should feel like a calm, premium reading and research workspace. I
 - Voice: clear, thoughtful, confident, helpful and honest.
 - Avoid exaggerated AI language and marketing-heavy microcopy.
 
-## Colour foundations
+## Theme
 
-Initial brand tokens:
+The workspace uses shadcn/ui's neutral theme, with dark appearance by default. The [theme stylesheet](../src/styles/theme.css) controls both appearances for the dashboard, navigation, and existing library screens.
 
-| Token | Hex | Intended use |
-|---|---|---|
-| Graphite | `#171B1A` | Dark app background |
-| Secondary surface | `#252C29` | Elevated dark surfaces |
-| Parchment | `#E8E9DF` | Light theme background |
-| Sage | `#A5B8A0` | Primary accent |
-| Amber | `#D6A66D` | Highlights and selected states |
+1. Open `src/styles/theme.css`. Change `:root` for light appearance and `.dark` for dark appearance.
+2. Change a base color alongside its matching foreground token. For example, edit `--primary` and `--primary-foreground` together to recolor filled action buttons and their labels.
+3. Reload and check both appearances. View the dashboard, a saved item, and a form to confirm text, links, controls, chart marks, and focus remain legible.
 
-The Phase 8 workspace uses deep graphite `#151A19` and parchment `#F4F1E8` as canvas colors. Sage indicates useful actions and saved results. Muted text and semantic labels carry status in both themes.
+| Tokens | Use |
+|---|---|
+| `--background`, `--foreground` | Page background and normal text |
+| `--card`, `--popover` and their foregrounds | Panels and menus |
+| `--primary`, `--secondary`, `--accent` and their foregrounds | Action hierarchy and active controls |
+| `--muted`, `--muted-foreground` | Quiet backgrounds and supporting text |
+| `--input`, `--border`, `--ring` | Form outlines, dividers, and keyboard focus |
+| `--sidebar` and related tokens | Navigation surface and active states |
+| `--chart-1` through `--chart-5` | Dashboard chart colors |
+| `--success`, `--warning`, `--danger`, `--destructive` | Status text and destructive controls |
 
-Create semantic tokens rather than scattering raw hex values:
-- `--background`
-- `--foreground`
-- `--surface`
-- `--surface-elevated`
-- `--muted`
-- `--muted-foreground`
-- `--border`
-- `--primary`
-- `--primary-foreground`
-- `--accent`
-- `--warning`
-- `--danger`
-- `--success`
-- `--focus-ring`
+New components use shadcn's semantic utility classes, such as `bg-card` and `text-muted-foreground`. The aliases at the end of the theme file connect existing styles to the same palette. Keep shared colors in the palette and use those tokens in components. See [shadcn's theming guide](https://ui.shadcn.com/docs/theming).
 
-Dark theme should be the default. Light theme must be deliberately designed, not mechanically inverted.
+Build new or updated UI controls with shadcn primitives in `src/components/ui`. Use `DropdownMenu` for actions and radio menus such as the dashboard date range. Use `Select` for form values, filters, and model choices. The shared `FieldSelect` provides labels and supports an “Any” choice. Use semantic HTML for page structure, and native browser controls for file selection and media playback.
 
 ## Typography
 
-Preferred direction:
-- UI: Inter or Geist, depending on existing project assets/dependencies.
-- Editorial accent: optional readable serif for selected page titles or long-form reading, not general controls.
-- Use a consistent type scale.
-- Prioritise line length and line height for transcripts and articles.
-- Avoid tiny metadata text and inconsistent heading sizes.
+Roboto Variable is bundled locally and defined in `src/styles/theme.css`. Use the sidebar's 14 px label and 16 px Lucide icon sizes for navigation, buttons, selects, and disclosures. Use larger headings for hierarchy and keep body text at 16 px. Transcripts use 17 px with generous line spacing.
 
-The workspace defaults to 16 px UI text. Metadata uses 13–15 px depending on hierarchy. Transcripts use 17 px with generous line spacing. Georgia and Cambria give page and reading section headings a quieter editorial hierarchy while controls remain sans serif.
+Standard buttons, text inputs, and select triggers use the shared `--control-height` theme token. It is 32 px with a mouse and 40 px on touch devices.
 
 ## Layout and spacing
 
@@ -85,7 +71,7 @@ Establish reusable variants for:
 
 ## Iconography
 
-Use one consistent icon library already present in the project where possible. Use simple line icons. Platform logos may be used as source identifiers where appropriate. Do not use emoji as primary application navigation icons.
+Use Lucide for workspace controls and navigation. Platform logos may be used as source identifiers where appropriate. Do not use emoji as primary application navigation icons.
 
 ## Content components
 
@@ -101,10 +87,9 @@ Do not show invented thumbnails. Use a neutral source placeholder when no image 
 
 ## Motion
 
-- Subtle transitions only.
-- Motion should communicate state changes, panel movement or progress.
-- Respect reduced-motion preferences.
-- No decorative looping animation.
+- The shared shadcn `Disclosure` uses a rotating chevron and keeps form values when collapsed.
+- Menus and select popovers ease in and out from their anchored side. Enter and exit durations are shared theme tokens.
+- Respect reduced-motion preferences. Show or hide dropdowns and disclosures immediately when motion is reduced.
 
 ## Accessibility
 
